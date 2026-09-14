@@ -68,7 +68,7 @@ struct EnvOptions {
   std::string AMEdata="../Nuclear_Databases/AMEdata_.txt"; 
   std::string Gammadata="../GammaData"; 
   std::string Radiationdata="../RadiationData"; 
-  std::string MixingRatiodata="/home/canovasmontes/Documents/master_ref/CRADLE/Nuclear_Databases/MixingRatio_.txt";
+  std::string MixingRatiodata="../MixingRatio/MixingRatio_.txt";
 };
 
 struct ConfigOptions{
