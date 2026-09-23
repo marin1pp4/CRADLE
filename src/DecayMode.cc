@@ -317,12 +317,14 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
       Type = utilities::FindBetaType(initState, recoil);
       DecayManager::GetInstance().RegisterBetaType(oss.str(), Type);
     }
+    std::cout << "BETA PLUS AUTO DEBUG: Type = " << Type << std::endl;
     if (Type == "Fermi") {
       mf = 1.;
     } else if (Type == "Gamow-Teller") {
       mgt = 1.;
     } else {
-      mgt = 1. ;
+      //mgt = 1. ;
+      mgt = std::stod(Type.substr(5))/1.2754; // To take into account the mixing already implemented
       mf = 1. ;
     }
   }
@@ -343,6 +345,12 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   double b_conf = dm.configOptions.couplingConstants.b;
 
   double a = utilities::CalculateBetaNeutrinoAsymmetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf);
+  //TESTING PURPOSES ONLY
+  std::cout << "BETA PLUS DEBUG: "
+          << "mf = " << mf
+          << ", mgt = " << mgt
+          << ", a = " << a
+          << std::endl;
   double fierz = utilities::CalculateFierz(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf);
 
   //std::cout <<" b = " << fierz <<"\t a = " << a << std::endl;
@@ -1413,6 +1421,13 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
   }
 
   double a = utilities::CalculateBetaNeutrinoAsymmetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf, posEnergy, recoil->GetCharge(), -1);
+  //TESTING PURPOSES ONLY
+  std::cout << "ANGULAR DEBUG: "
+          << "mf = " << mf
+          << ", mgt = " << mgt
+          << ", posEnergy = " << posEnergy
+          << ", a = " << a
+          << std::endl;
   double c = 0;
   double A = 0;
   double B = 0;

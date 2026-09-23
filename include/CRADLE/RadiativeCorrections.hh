@@ -507,7 +507,7 @@ inline double W0_max(double MF, double MGT, double a, double MIMASSC2, int Z, in
     double intervalle_E2 = (DELTA - 1.) / (n) ;
     double intervalle_cos = 2. / (n) ;
     std::vector<double> tableau_E2(n); 
-    std::vector<double> tableau_cos(n) ;
+    std::vector<double> tableau_cos(n); 
     for (int i=0 ; i<=n ; i++) {
         tableau_E2[i] = 1. + i * intervalle_E2 ;
         tableau_cos[i] = 1. - i * intervalle_cos ;
@@ -541,8 +541,8 @@ inline double W0VS_max(double Cs, double MF, double MGT, double a, double MIMASS
     double DELTA = Q / EMASSC2 + 1. ;
     double intervalle_E2 = (DELTA - 1.) / (n) ;
     double intervalle_cos = 2. / (n) ;
-    std::vector<double> tableau_E2(n); 
-    std::vector<double> tableau_cos(n) ;
+    std::vector<double> tableau_E2(n+1); // n -> n+1 CORRECTION
+    std::vector<double> tableau_cos(n+1); // n -> n+1 CORRECTION
     for (int i=0 ; i<=n ; i++) {
         tableau_E2[i] = 1. + i * intervalle_E2 ;
         tableau_cos[i] = 1. - i * intervalle_cos ;

@@ -1,0 +1,14 @@
+{
+    "cmake.parallelJobs": 2,
+
+    "C_Cpp.intelliSenseCacheSize": 256,
+    "C_Cpp.intelliSenseMemoryLimit": 1024,
+
+    "files.exclude": {
+        "**/build": true
+    },
+
+    "files.watcherExclude": {
+        "**/build/**": true
+    }
+}

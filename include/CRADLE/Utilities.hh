@@ -679,6 +679,12 @@ namespace utilities {
     
     double a = utilities::CalculateBetaNeutrinoAsymmetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf);
 
+    // TEST TO CHECK BYPASSING THE VALUE OF A FROM THE CONFIG FILE
+    std::cout << "a_conf = " << a_conf
+          << ", b_conf = " << b_conf
+          << ", a_used = " << a
+          << std::endl;
+
     double M = A * (PMASSC2 + NMASSC2) / 2. / EMASSC2;
 
     double p = std::sqrt(W * W - 1.);
