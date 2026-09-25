@@ -18,6 +18,7 @@ Energy=1.0
 [BetaDecay]
 Default=Auto
 FermiFunction=Advanced
+aCustom=
 RadiativeCorrection=false
 #Polarisation not yet implemented
 PolarisationX=0.

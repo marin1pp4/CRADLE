@@ -1,5 +1,7 @@
 #include <string>
 #include <iostream>
+#include <stdexcept>
+#include <cstdlib>
 
 #include "CLI11.hpp"
 #include "CRADLE/DecayManager.hh"
@@ -25,7 +27,14 @@ int main (int argc, const char* argv[]) {
   bool success = dm.Initialise(configFilename, argc, argv);
 
   if (success) {
-    dm.MainLoop();
+    try {
+      dm.MainLoop();
+    }
+    catch (const std::runtime_error& e) {
+      std::cerr << "CRADLE++ runtime error: "
+                << e.what() << std::endl;
+      return EXIT_FAILURE;
+    }
   } else {
     std::cout << "Specify configuration file, isotope name, charge and number of nucleons. Use the --help option for more documentation." << std::endl;
   }

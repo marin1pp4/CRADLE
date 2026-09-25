@@ -351,6 +351,16 @@ namespace utilities {
     }
   }
 
+  inline double CalculateMatrixElementRatio(double rho, double gA_ref = 1.2754, double gV_ref = 1.0){
+    // Convert the experimental mixing ratio
+    //
+    //   rho = (g_A/g_V)_ref * (M_GT/M_F)
+    //
+    // into the nuclear matrix-element ratio M_GT/M_F.
+    // The reference couplings are used only for this conversion.
+    return rho * gV_ref / gA_ref;
+  }
+
   inline vector<double> NormaliseVector(const vector<double>& v) {
     vector<double> newV (v);
     double norm = GetNorm(v);
@@ -678,12 +688,6 @@ namespace utilities {
     }
     
     double a = utilities::CalculateBetaNeutrinoAsymmetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf);
-
-    // TEST TO CHECK BYPASSING THE VALUE OF A FROM THE CONFIG FILE
-    std::cout << "a_conf = " << a_conf
-          << ", b_conf = " << b_conf
-          << ", a_used = " << a
-          << std::endl;
 
     double M = A * (PMASSC2 + NMASSC2) / 2. / EMASSC2;
 

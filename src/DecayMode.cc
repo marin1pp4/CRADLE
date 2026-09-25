@@ -10,6 +10,7 @@
 #include <sstream>
 #include <complex>
 #include <chrono>
+#include "exprtk.hpp"
 
 namespace CRADLE {
 
@@ -207,12 +208,12 @@ std::vector<Particle*> BetaMinus::Decay(Particle* initState, double Q, double da
     } else if (Type == "Gamow-Teller") {
       mgt = 1.;
     } else {
-      mgt = 1. ;
-      mf = 1. ;
+      double rho = std::stod(Type.substr(5));
+      mgt = utilities::CalculateMatrixElementRatio(rho);
+      mf = 1.;
     }
   } 
-  //mgt = 0. ;
-  //mf = 1. ;
+
   double a = utilities::CalculateBetaNeutrinoAsymmetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf);
   double fierz = utilities::CalculateFierz(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf);
 
@@ -296,6 +297,7 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
 
   double mf = 0.;
   double mgt = 0.;
+  double rho = std::nan("");
 
   /////////ajout de SL 12/05/2023//////////////
 
@@ -317,22 +319,17 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
       Type = utilities::FindBetaType(initState, recoil);
       DecayManager::GetInstance().RegisterBetaType(oss.str(), Type);
     }
-    std::cout << "BETA PLUS AUTO DEBUG: Type = " << Type << std::endl;
     if (Type == "Fermi") {
       mf = 1.;
     } else if (Type == "Gamow-Teller") {
       mgt = 1.;
     } else {
-      //mgt = 1. ;
-      mgt = std::stod(Type.substr(5))/1.2754; // To take into account the mixing already implemented
-      mf = 1. ;
+      rho = std::stod(Type.substr(5));
+      mgt = utilities::CalculateMatrixElementRatio(rho);
+      mf = 1.;
     }
   }
-  //std::cout << "mf : " << mf << "\n";
-  //std::cout << "mgt : " << mgt << "\n";
-  //mf = 1.;
-  //mgt = 0.;
-  ////////////////////////////////////////////////
+
   double CS = dm.configOptions.couplingConstants.CS.real();
   double CSP = dm.configOptions.couplingConstants.CSP.real();
   double CV = dm.configOptions.couplingConstants.CV.real();
@@ -344,17 +341,69 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   double a_conf = dm.configOptions.couplingConstants.a;
   double b_conf = dm.configOptions.couplingConstants.b;
 
-  double a = utilities::CalculateBetaNeutrinoAsymmetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf);
-  //TESTING PURPOSES ONLY
-  std::cout << "BETA PLUS DEBUG: "
-          << "mf = " << mf
-          << ", mgt = " << mgt
-          << ", a = " << a
-          << std::endl;
-  double fierz = utilities::CalculateFierz(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf);
+  // ==========================================
+  // Custom a expression with ExprTk
+  // ==========================================
 
-  //std::cout <<" b = " << fierz <<"\t a = " << a << std::endl;
-  //std::cout << "a : " << a << "\n";
+  double a_exprtk = std::nan("");
+  std::string aCustomExpression = dm.configOptions.betaDecay.aCustom;
+
+  if(!aCustomExpression.empty()){
+
+    double rM = mgt / mf;
+
+    exprtk::symbol_table<double> symbolTable;
+
+    symbolTable.add_variable("rho", rho);
+    symbolTable.add_variable("rM", rM);
+    symbolTable.add_variable("CS",  CS);
+    symbolTable.add_variable("CSP", CSP);
+    symbolTable.add_variable("CV",  CV);
+    symbolTable.add_variable("CVP", CVP);
+    symbolTable.add_variable("CT",  CT);
+    symbolTable.add_variable("CTP", CTP);
+    symbolTable.add_variable("CA",  CA);
+    symbolTable.add_variable("CAP", CAP);
+
+    exprtk::expression<double> expression;
+    expression.register_symbol_table(symbolTable);
+
+    exprtk::parser<double> parser;
+    if (parser.compile(aCustomExpression, expression)) {
+      a_exprtk = expression.value();
+    }
+    else {
+      std::cerr << "ERROR: Invalid aCustom expression: "
+                << aCustomExpression << std::endl;
+
+      std::cerr << "ExprTk parser error: "
+                << parser.error() << std::endl;
+
+      throw std::runtime_error(
+        "Failed to parse aCustom expression.");
+    }
+
+  }
+
+  // ==========================================
+  // Standard CRADLE calculation
+  // ==========================================
+
+  double a = utilities::CalculateBetaNeutrinoAsymmetry(
+      CS, CSP, CT, CTP, CV, CVP, CA, CAP,
+      mf, mgt, a_conf, b_conf);
+
+  // ==========================================
+  // Override a if aCustom was provided
+  // ==========================================
+
+  if (!std::isnan(a_exprtk)) {
+    a = a_exprtk;
+  }
+
+  double fierz = utilities::CalculateFierz(
+      CS, CSP, CT, CTP, CV, CVP, CA, CAP,
+      mf, mgt, a_conf, b_conf);
   
   double Jpi_init = utilities::GetJpi(initState->GetNeutrons() + initState->GetCharge(), initState->GetCharge(), initState->GetExcitationEnergy());
   double Jpi_final = utilities::GetJpi(recoil->GetNeutrons() + recoil->GetCharge(), recoil->GetCharge(), recoil->GetExcitationEnergy());

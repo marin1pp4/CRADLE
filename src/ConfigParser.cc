@@ -74,6 +74,7 @@ namespace CRADLE {
     CLI::App* comp = app.add_subcommand("BetaDecay", "This is the beta decay subcommand")->ignore_case();
     comp->add_option("--DecayType", betaDecay.Default, "Decay type : Fermi, Gamow-Teller, FU, AUTO");
     comp->add_option("--FermiFunction", betaDecay.FermiFunction, "");
+    comp->add_option("--aCustom", betaDecay.aCustom, "Custom expression for the beta-neutrino correlation coefficient a");
     comp->add_option("--PolarisationX", betaDecay.PolarisationX, "X component of polarisation direction"); 
     comp->add_option("--PolarisationY", betaDecay.PolarisationY, "Y component of polarisation direction");
     comp->add_option("--PolarisationZ", betaDecay.PolarisationZ, "Z component of polarisation direction");
