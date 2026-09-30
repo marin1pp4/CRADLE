@@ -10,7 +10,7 @@ CTP=0.
 CA=1.2754
 CAP=1.2754
 #a=0.0
-#b=0.0
+b=0.0
 [Cuts]
 Distance=1.0
 Lifetime=1e9
@@ -18,7 +18,8 @@ Energy=1.0
 [BetaDecay]
 Default=Auto
 FermiFunction=Advanced
-aCustom=
+#aCustom=(-CS^2-CSP^2+CV^2+CVP^2+(rM^2/3)*(CT^2+CTP^2-CA^2-CAP^2))/(CS^2+CSP^2+CV^2+CVP^2+rM^2*(CT^2+CTP^2+CA^2+CAP^2))
+aCustom=0.2+0.3*(Ee/1000.0)
 RadiativeCorrection=false
 #Polarisation not yet implemented
 PolarisationX=0.

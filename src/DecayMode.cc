@@ -348,43 +348,6 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   double a_exprtk = std::nan("");
   std::string aCustomExpression = dm.configOptions.betaDecay.aCustom;
 
-  if(!aCustomExpression.empty()){
-
-    double rM = mgt / mf;
-
-    exprtk::symbol_table<double> symbolTable;
-
-    symbolTable.add_variable("rho", rho);
-    symbolTable.add_variable("rM", rM);
-    symbolTable.add_variable("CS",  CS);
-    symbolTable.add_variable("CSP", CSP);
-    symbolTable.add_variable("CV",  CV);
-    symbolTable.add_variable("CVP", CVP);
-    symbolTable.add_variable("CT",  CT);
-    symbolTable.add_variable("CTP", CTP);
-    symbolTable.add_variable("CA",  CA);
-    symbolTable.add_variable("CAP", CAP);
-
-    exprtk::expression<double> expression;
-    expression.register_symbol_table(symbolTable);
-
-    exprtk::parser<double> parser;
-    if (parser.compile(aCustomExpression, expression)) {
-      a_exprtk = expression.value();
-    }
-    else {
-      std::cerr << "ERROR: Invalid aCustom expression: "
-                << aCustomExpression << std::endl;
-
-      std::cerr << "ExprTk parser error: "
-                << parser.error() << std::endl;
-
-      throw std::runtime_error(
-        "Failed to parse aCustom expression.");
-    }
-
-  }
-
   // ==========================================
   // Standard CRADLE calculation
   // ==========================================
@@ -392,14 +355,6 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   double a = utilities::CalculateBetaNeutrinoAsymmetry(
       CS, CSP, CT, CTP, CV, CVP, CA, CAP,
       mf, mgt, a_conf, b_conf);
-
-  // ==========================================
-  // Override a if aCustom was provided
-  // ==========================================
-
-  if (!std::isnan(a_exprtk)) {
-    a = a_exprtk;
-  }
 
   double fierz = utilities::CalculateFierz(
       CS, CSP, CT, CTP, CV, CVP, CA, CAP,
@@ -432,6 +387,52 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   // ublas::vector<std::vector<double> >* dist;
   double posEnergy = utilities::RandomFromDistribution(*dist) + utilities::EMASSC2;
   double posMomentum = std::sqrt(posEnergy*posEnergy-std::pow(utilities::EMASSC2, 2.));
+
+  // ==========================================
+  // Evaluate custom a expression event-by-event
+  // ==========================================
+
+  double Ee = posEnergy;
+
+  if (!aCustomExpression.empty()) {
+
+    double rM = mgt / mf;
+
+    // Total positron energy in keV
+    double Ee = posEnergy;
+
+    exprtk::symbol_table<double> symbolTable;
+
+    symbolTable.add_variable("Ee",  Ee);
+    symbolTable.add_variable("rho", rho);
+    symbolTable.add_variable("rM",  rM);
+    symbolTable.add_variable("CS",  CS);
+    symbolTable.add_variable("CSP", CSP);
+    symbolTable.add_variable("CV",  CV);
+    symbolTable.add_variable("CVP", CVP);
+    symbolTable.add_variable("CT",  CT);
+    symbolTable.add_variable("CTP", CTP);
+    symbolTable.add_variable("CA",  CA);
+    symbolTable.add_variable("CAP", CAP);
+
+    exprtk::expression<double> expression;
+    expression.register_symbol_table(symbolTable);
+
+    exprtk::parser<double> parser;
+
+    if (parser.compile(aCustomExpression, expression)) {
+      a_exprtk = expression.value();
+      //std::cout << "aCUSTOM ENERGY DEBUG: " << "Ee = " << Ee << " keV, a_exprtk = " << a_exprtk << std::endl;
+    }
+    else {
+      std::cerr << "ERROR: Invalid aCustom expression: " << aCustomExpression << std::endl;
+      std::cerr << "ExprTk parser error: " << parser.error() << std::endl;
+      throw std::runtime_error("Failed to parse aCustom expression.");
+    }
+
+    // Override standard CRADLE value
+    a = a_exprtk;
+  }
 
   std::vector<double> p;
   p.push_back(1.);
