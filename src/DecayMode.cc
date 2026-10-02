@@ -14,6 +14,86 @@
 
 namespace CRADLE {
 
+double EvaluateCustomCoefficient(
+    const std::string& expressionString,
+    double Ee,
+    double rho,
+    double rM,
+    double mf,
+    double mgt,
+    double ji,
+    double jf,
+    double Z,
+    double betaType,
+    double xi,
+    double coulombCorr,
+    double CS,
+    double CSP,
+    double CV,
+    double CVP,
+    double CT,
+    double CTP,
+    double CA,
+    double CAP,
+    double CS_im,
+    double CSP_im,
+    double CV_im,
+    double CVP_im,
+    double CT_im,
+    double CTP_im,
+    double CA_im,
+    double CAP_im)
+  {
+    exprtk::symbol_table<double> symbolTable;
+
+    symbolTable.add_variable("mf", mf);
+    symbolTable.add_variable("mgt", mgt);
+    symbolTable.add_variable("ji", ji);
+    symbolTable.add_variable("jf", jf);
+    symbolTable.add_variable("Z", Z);
+    symbolTable.add_variable("betaType", betaType);
+    symbolTable.add_variable("xi", xi);
+    symbolTable.add_variable("coulombCorr", coulombCorr);
+    symbolTable.add_variable("Ee",  Ee);
+    symbolTable.add_variable("rho", rho);
+    symbolTable.add_variable("rM",  rM);
+    symbolTable.add_variable("CS",  CS);
+    symbolTable.add_variable("CSP", CSP);
+    symbolTable.add_variable("CV",  CV);
+    symbolTable.add_variable("CVP", CVP);
+    symbolTable.add_variable("CT",  CT);
+    symbolTable.add_variable("CTP", CTP);
+    symbolTable.add_variable("CA",  CA);
+    symbolTable.add_variable("CAP", CAP);
+    symbolTable.add_variable("CS_re",  CS);
+    symbolTable.add_variable("CSP_re", CSP);
+    symbolTable.add_variable("CV_re",  CV);
+    symbolTable.add_variable("CVP_re", CVP);
+    symbolTable.add_variable("CT_re",  CT);
+    symbolTable.add_variable("CTP_re", CTP);
+    symbolTable.add_variable("CA_re",  CA);
+    symbolTable.add_variable("CAP_re", CAP);
+    symbolTable.add_variable("CS_im",  CS_im);
+    symbolTable.add_variable("CSP_im", CSP_im);
+    symbolTable.add_variable("CV_im",  CV_im);
+    symbolTable.add_variable("CVP_im", CVP_im);
+    symbolTable.add_variable("CT_im",  CT_im);
+    symbolTable.add_variable("CTP_im", CTP_im);
+    symbolTable.add_variable("CA_im",  CA_im);
+    symbolTable.add_variable("CAP_im", CAP_im);
+
+    exprtk::expression<double> expression;
+    expression.register_symbol_table(symbolTable);
+    exprtk::parser<double> parser;
+
+    if (!parser.compile(expressionString, expression)) {
+      std::cerr << "ERROR: Invalid custom coefficient expression: " << expressionString << std::endl;
+      std::cerr << "ExprTk parser error: " << parser.error() << std::endl;
+      throw std::runtime_error("Failed to parse custom coefficient expression.");
+    }
+    return expression.value();
+  }
+
 void DecayMode::FourBodyDecay(ublas::vector<double>& velocity, Particle* finalState1, Particle* finalState2, Particle* finalState3, Particle* finalState4) //, ublas::vector<double>& dir1, ublas::vector<double>& dir2, ublas::vector<double>& dirg, double EnergyElectron, double EnergyNeutrino, double EnergyBrPhoton) 
 {
   ublas::vector<double> momentum1 (4);
@@ -341,11 +421,19 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   double a_conf = dm.configOptions.couplingConstants.a;
   double b_conf = dm.configOptions.couplingConstants.b;
 
+  //New implementation to handle complex numbers
+  std::complex<double> CS_complex  = dm.configOptions.couplingConstants.CS;
+  std::complex<double> CSP_complex = dm.configOptions.couplingConstants.CSP;
+  std::complex<double> CV_complex  = dm.configOptions.couplingConstants.CV;
+  std::complex<double> CVP_complex = dm.configOptions.couplingConstants.CVP;
+  std::complex<double> CA_complex  = dm.configOptions.couplingConstants.CA;
+  std::complex<double> CAP_complex = dm.configOptions.couplingConstants.CAP;
+  std::complex<double> CT_complex  = dm.configOptions.couplingConstants.CT;
+  std::complex<double> CTP_complex = dm.configOptions.couplingConstants.CTP;
+
   // ==========================================
   // Custom a expression with ExprTk
   // ==========================================
-
-  double a_exprtk = std::nan("");
   std::string aCustomExpression = dm.configOptions.betaDecay.aCustom;
 
   // ==========================================
@@ -392,46 +480,22 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   // Evaluate custom a expression event-by-event
   // ==========================================
 
-  double Ee = posEnergy;
+  double ji = std::abs(Jpi_init);
+  double jf = std::abs(Jpi_final);
+  double Z = recoil->GetCharge();
+  double betaType = -1.;
+  double xi = utilities::CalculateXiBetaDecay(CS_complex,CSP_complex,CT_complex,CTP_complex,CV_complex,CVP_complex,
+                                              CA_complex, CAP_complex,mf, mgt);
+  double coulombCorr = utilities::FINESTRUCTURE*recoil->GetCharge()/std::sqrt(posEnergy*posEnergy/utilities::EMASSC2/     utilities::EMASSC2-1.);
 
   if (!aCustomExpression.empty()) {
-
     double rM = mgt / mf;
-
-    // Total positron energy in keV
-    double Ee = posEnergy;
-
-    exprtk::symbol_table<double> symbolTable;
-
-    symbolTable.add_variable("Ee",  Ee);
-    symbolTable.add_variable("rho", rho);
-    symbolTable.add_variable("rM",  rM);
-    symbolTable.add_variable("CS",  CS);
-    symbolTable.add_variable("CSP", CSP);
-    symbolTable.add_variable("CV",  CV);
-    symbolTable.add_variable("CVP", CVP);
-    symbolTable.add_variable("CT",  CT);
-    symbolTable.add_variable("CTP", CTP);
-    symbolTable.add_variable("CA",  CA);
-    symbolTable.add_variable("CAP", CAP);
-
-    exprtk::expression<double> expression;
-    expression.register_symbol_table(symbolTable);
-
-    exprtk::parser<double> parser;
-
-    if (parser.compile(aCustomExpression, expression)) {
-      a_exprtk = expression.value();
-      //std::cout << "aCUSTOM ENERGY DEBUG: " << "Ee = " << Ee << " keV, a_exprtk = " << a_exprtk << std::endl;
-    }
-    else {
-      std::cerr << "ERROR: Invalid aCustom expression: " << aCustomExpression << std::endl;
-      std::cerr << "ExprTk parser error: " << parser.error() << std::endl;
-      throw std::runtime_error("Failed to parse aCustom expression.");
-    }
-
-    // Override standard CRADLE value
-    a = a_exprtk;
+    a = EvaluateCustomCoefficient(aCustomExpression,posEnergy,rho,rM,mf,mgt,ji,jf,Z,betaType,xi,coulombCorr,CS,CSP,CV,CVP,CT,
+                                  CTP,CA,CAP,CS_complex.imag(),CSP_complex.imag(),CV_complex.imag(),CVP_complex.imag(),
+                                  CT_complex.imag(),CTP_complex.imag(),CA_complex.imag(),CAP_complex.imag());
+    //std::cout << "CUSTOM COEFFICIENT TEST: "<< "rho = " << rho<< ", rM = " << rM<< ", Ee = " << posEnergy
+    //<< ", aCustom = " << a
+    //<< std::endl;
   }
 
   std::vector<double> p;
@@ -851,6 +915,7 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
 
   double mf = 0.;
   double mgt = 0.;
+  double rho = std::nan("");
   
   if (dm.configOptions.betaDecay.Default == "Fermi") {
     mf = 1.;
@@ -875,12 +940,11 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
     } else if (Type == "Gamow-Teller") {
       mgt = 1.;
     } else {
-      mgt = std::stod(Type.substr(5))/1.2754; //data is experimental mixing ratio
+      rho = std::stod(Type.substr(5));
+      mgt = utilities::CalculateMatrixElementRatio(rho);
       mf = 1.;
     }
   } 
-  //mgt = 0. ;
-  //mf = 1. ;
   
   double Jpi_init = utilities::GetJpi(initState->GetNeutrons() + initState->GetCharge(), initState->GetCharge(), initState->GetExcitationEnergy());
   double Jpi_final = utilities::GetJpi(recoil->GetNeutrons() + recoil->GetCharge(), recoil->GetCharge(), recoil->GetExcitationEnergy());
@@ -925,8 +989,8 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
     j_i = std::abs(angular_mom[0]);
     j_f = std::abs(angular_mom[1]);
   } catch (const std::invalid_argument& e){
-    double j_i = utilities::GetJpi(initState->GetCharge()+initState->GetNeutrons(),initState->GetCharge(),initState->GetExcitationEnergy());
-    double j_f = utilities::GetJpi(recoil->GetCharge()+recoil->GetNeutrons(),recoil->GetCharge(),recoil->GetExcitationEnergy());
+    j_i = utilities::GetJpi(initState->GetCharge()+initState->GetNeutrons(),initState->GetCharge(),initState->GetExcitationEnergy());
+    j_f = utilities::GetJpi(recoil->GetCharge()+recoil->GetNeutrons(),recoil->GetCharge(),recoil->GetExcitationEnergy());
     angular_mom = {j_i,j_f};
     DecayManager::GetInstance().RegisterParameterMC(oss.str(),angular_mom);
     j_i = std::abs(j_i);
@@ -947,10 +1011,44 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
       c = polarisation::CalculateAlignmentCorrelation(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, j_i, j_f, +1, recoil->GetCharge(), elEnergy);
     }
   }
+
+  std::cout << "D INPUT TEST:"
+            << " mf=" << mf
+            << " mgt=" << mgt
+            << " ji=" << j_i
+            << " jf=" << j_f
+            << " CV=(" << CV.real() << "," << CV.imag() << ")"
+            << " CA=(" << CA.real() << "," << CA.imag() << ")"
+            << " CVP=(" << CVP.real() << "," << CVP.imag() << ")"
+            << " CAP=(" << CAP.real() << "," << CAP.imag() << ")"
+            << std::endl;
+
+  std::cout << "D standard = " << D << std::endl;
+
+  //DCustom implementation
+  std::string DCustomExpression = dm.configOptions.betaDecay.DCustom;
+
+  double Z = recoil->GetCharge();
+  double betaType = +1.;
+  double xi = utilities::CalculateXiBetaDecay(CS, CSP, CT, CTP,CV, CVP, CA, CAP, mf, mgt);
+  double coulombCorr = utilities::FINESTRUCTURE*recoil->GetCharge()/std::sqrt(elEnergy*elEnergy/utilities::EMASSC2/utilities::EMASSC2-1.);
+
+  if (!DCustomExpression.empty()) {
+    double rM = mgt / mf;
+    D = EvaluateCustomCoefficient(DCustomExpression,elEnergy,rho,rM,mf,mgt,j_i,j_f,Z,betaType,xi,
+                                  coulombCorr,CS.real(),CSP.real(),CV.real(),CVP.real(),CT.real(),CTP.real(),CA.real(),
+                                  CAP.real(),CS.imag(),CSP.imag(),CV.imag(),CVP.imag(),CT.imag(),CTP.imag(),CA.imag(),
+                                  CAP.imag());
+  }
+
+  std::cout << "D custom before pol  = " << D << std::endl;
+
   c *= align*(-1);
   A *= polMag;
   B *= polMag;
   D *= polMag;
+
+  std::cout << "D custom = " << D << std::endl;
   
   double F_max = polarisation::AnalyticalMaximumAngCorrFactor(a, fierz, c, A, B, D, elEnergy);
   //std::cout << "a " << a <<  ", c " << c << ", A " << A << ", B " << B << ", D " << D << std::endl;
@@ -1373,6 +1471,7 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
 
   double mf = 0.;
   double mgt = 0.;
+  double rho = std::nan("");
 
   /////////ajout de SL 12/05/2023//////////////
 
@@ -1399,14 +1498,12 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
     } else if (Type == "Gamow-Teller") {
       mgt = 1.;
     } else {
-      mgt = std::stod(Type.substr(5))/1.2754;
+      rho = std::stod(Type.substr(5));
+      mgt = utilities::CalculateMatrixElementRatio(rho);
       mf = 1.;
     }
   }
-  //std::cout << "mf : " << mf << "\n";
-  //std::cout << "mgt : " << mgt << "\n";
-  //mf = 1.;
-  //mgt = 0.;
+
   ////////////////////////////////////////////////
   std::complex<double> CS = dm.configOptions.couplingConstants.CS;
   std::complex<double> CSP = dm.configOptions.couplingConstants.CSP;
@@ -1421,8 +1518,6 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
 
   double fierz = utilities::CalculateFierz(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf, recoil->GetCharge(), -1);
 
-  //std::cout <<" b = " << fierz <<"\t a = " << a << std::endl;
-  //std::cout << "a : " << a << "\n";
   
   double Jpi_init = utilities::GetJpi(initState->GetNeutrons() + initState->GetCharge(), initState->GetCharge(), initState->GetExcitationEnergy());
   double Jpi_final = utilities::GetJpi(recoil->GetNeutrons() + recoil->GetCharge(), recoil->GetCharge(), recoil->GetExcitationEnergy());
@@ -1462,26 +1557,33 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
     j_i = std::abs(angular_mom[0]);
     j_f = std::abs(angular_mom[1]);
   } catch (const std::invalid_argument& e){
-    double j_i = utilities::GetJpi(initState->GetCharge()+initState->GetNeutrons(),initState->GetCharge(),initState->GetExcitationEnergy());
-    double j_f = utilities::GetJpi(recoil->GetCharge()+recoil->GetNeutrons(),recoil->GetCharge(),recoil->GetExcitationEnergy());
+    j_i = utilities::GetJpi(initState->GetCharge()+initState->GetNeutrons(),initState->GetCharge(),initState->GetExcitationEnergy());
+    j_f = utilities::GetJpi(recoil->GetCharge()+recoil->GetNeutrons(),recoil->GetCharge(),recoil->GetExcitationEnergy());
     angular_mom = {j_i,j_f};
     DecayManager::GetInstance().RegisterParameterMC(oss.str(),angular_mom);
     j_i = std::abs(j_i);
     j_f = std::abs(j_f);
   }
 
+  //DCustom implementation
+  std::string DCustomExpression = dm.configOptions.betaDecay.DCustom;
+
   double a = utilities::CalculateBetaNeutrinoAsymmetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf, posEnergy, recoil->GetCharge(), -1);
-  //TESTING PURPOSES ONLY
-  std::cout << "ANGULAR DEBUG: "
-          << "mf = " << mf
-          << ", mgt = " << mgt
-          << ", posEnergy = " << posEnergy
-          << ", a = " << a
-          << std::endl;
   double c = 0;
   double A = 0;
   double B = 0;
   double D = 0;
+
+  std::cout << "D INPUT TEST:"
+            << " mf=" << mf
+            << " mgt=" << mgt
+            << " ji=" << j_i
+            << " jf=" << j_f
+            << " CV=(" << CV.real() << "," << CV.imag() << ")"
+            << " CA=(" << CA.real() << "," << CA.imag() << ")"
+            << " CVP=(" << CVP.real() << "," << CVP.imag() << ")"
+            << " CAP=(" << CAP.real() << "," << CAP.imag() << ")"
+            << std::endl;
 
   if (j_i > 0){
     A = polarisation::CalculateBetaAssymetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, j_i, j_f, -1, recoil->GetCharge(), posEnergy);
@@ -1491,11 +1593,30 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
       c = polarisation::CalculateAlignmentCorrelation(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, j_i, j_f, -1, recoil->GetCharge(), posEnergy);
     }
   }
+
+  std::cout << "D standard = " << D << std::endl;
+  double Z = recoil->GetCharge();
+  double betaType = -1.;
+  double xi = utilities::CalculateXiBetaDecay(CS, CSP, CT, CTP,CV, CVP, CA, CAP, mf, mgt);
+  double coulombCorr = utilities::FINESTRUCTURE*recoil->GetCharge()/std::sqrt(posEnergy*posEnergy/utilities::EMASSC2/utilities::EMASSC2-1.);
   
+  if (!DCustomExpression.empty()) {
+    double rM = mgt / mf;
+    D = EvaluateCustomCoefficient(DCustomExpression,posEnergy,rho,rM,mf,mgt,j_i,j_f,Z,betaType,xi,
+                                  coulombCorr,CS.real(),CSP.real(),CV.real(),CVP.real(),CT.real(),CTP.real(),CA.real(),
+                                  CAP.real(),CS.imag(),CSP.imag(),CV.imag(),CVP.imag(),CT.imag(),CTP.imag(),CA.imag(),
+                                  CAP.imag());
+  }
+
+  std::cout << "D custom before pol  = " << D << std::endl;
+
   c *= align*(-1);
   A *= polMag;
   B *= polMag;
   D *= polMag;
+
+  std::cout << "D custom   = " << D << std::endl;
+
   double F_max = polarisation::AnalyticalMaximumAngCorrFactor(a, fierz, c, A, B, D, posEnergy);
 
   //sampling

@@ -55,6 +55,7 @@ struct BetaDecay {
   std::string Default = "Auto";
   std::string FermiFunction = "";
   std::string aCustom = "";
+  std::string DCustom = "";
   double PolarisationX = 0;
   double PolarisationY = 0;
   double PolarisationZ = 0;
