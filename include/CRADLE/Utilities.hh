@@ -29,6 +29,11 @@
 #include "CRADLE/DecayMode.hh"
 #include "CRADLE/Particle.hh"
 
+//develop_3
+#include "exprtk.hpp"
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
 
 namespace CRADLE {
 
@@ -1220,6 +1225,129 @@ inline double GetBetaCorrections(int Z, int A, double Q, double E, int betaType,
     }
    return dist;
   }
+
+  //Context structure for custom coefficients implementation
+  struct CustomCoefficientContext
+  {
+    double Ee = 0.;
+    double rho = std::nan("");
+    double rM = std::nan("");
+    double mf = 0.;
+    double mgt = 0.;
+    double ji = 0.;
+    double jf = 0.;
+    double Z = 0.;
+    double betaType = 0.;
+    double xi = 0.;
+    double gamma = 1.;
+    double gammaRatio = 0.;
+    double coulombCorr = 0.;
+    double bigLambda = 0.;
+    double smallLambda = 0.;
+    std::complex<double> CS{0.,0.};
+    std::complex<double> CSP{0.,0.};
+    std::complex<double> CV{0.,0.};
+    std::complex<double> CVP{0.,0.};
+    std::complex<double> CT{0.,0.};
+    std::complex<double> CTP{0.,0.};
+    std::complex<double> CA{0.,0.};
+    std::complex<double> CAP{0.,0.};
+  };
+
+  inline double EvaluateCustomCoefficient(
+    const std::string& expressionString,
+    const CustomCoefficientContext& ctx)
+  {
+
+    double Ee = ctx.Ee;
+    double rho = ctx.rho;
+    double rM = ctx.rM;
+    double mf = ctx.mf;
+    double mgt = ctx.mgt;
+    double ji = ctx.ji;
+    double jf = ctx.jf;
+    double Z = ctx.Z;
+    double betaType = ctx.betaType;
+    double xi = ctx.xi;
+    double gamma = ctx.gamma;
+    double gammaRatio = ctx.gammaRatio;
+    double coulombCorr = ctx.coulombCorr;
+    double bigLambda = ctx.bigLambda;
+    double smallLambda = ctx.smallLambda;
+    double CS_re  = ctx.CS.real();
+    double CSP_re = ctx.CSP.real();
+    double CV_re  = ctx.CV.real();
+    double CVP_re = ctx.CVP.real();
+    double CT_re  = ctx.CT.real();
+    double CTP_re = ctx.CTP.real();
+    double CA_re  = ctx.CA.real();
+    double CAP_re = ctx.CAP.real();
+    double CS_im  = ctx.CS.imag();
+    double CSP_im = ctx.CSP.imag();
+    double CV_im  = ctx.CV.imag();
+    double CVP_im = ctx.CVP.imag();
+    double CT_im  = ctx.CT.imag();
+    double CTP_im = ctx.CTP.imag();
+    double CA_im  = ctx.CA.imag();
+    double CAP_im = ctx.CAP.imag();
+
+    exprtk::symbol_table<double> symbolTable;
+
+    symbolTable.add_variable("Ee", Ee);
+    symbolTable.add_variable("rho", rho);
+    symbolTable.add_variable("rM", rM);
+    symbolTable.add_variable("mf", mf);
+    symbolTable.add_variable("mgt", mgt);
+    symbolTable.add_variable("ji", ji);
+    symbolTable.add_variable("jf", jf);
+    symbolTable.add_variable("Z", Z);
+    symbolTable.add_variable("betaType", betaType);
+    symbolTable.add_variable("xi", xi);
+    symbolTable.add_variable("gamma", gamma);
+    symbolTable.add_variable("gammaRatio", gammaRatio);
+    symbolTable.add_variable("coulombCorr", coulombCorr);
+    symbolTable.add_variable("bigLambda", bigLambda);
+    symbolTable.add_variable("smallLambda", smallLambda);
+    symbolTable.add_variable("CS",  CS_re);
+    symbolTable.add_variable("CSP", CSP_re);
+    symbolTable.add_variable("CV",  CV_re);
+    symbolTable.add_variable("CVP", CVP_re);
+    symbolTable.add_variable("CT",  CT_re);
+    symbolTable.add_variable("CTP", CTP_re);
+    symbolTable.add_variable("CA",  CA_re);
+    symbolTable.add_variable("CAP", CAP_re);
+    symbolTable.add_variable("CS_re",  CS_re);
+    symbolTable.add_variable("CSP_re", CSP_re);
+    symbolTable.add_variable("CV_re",  CV_re);
+    symbolTable.add_variable("CVP_re", CVP_re);
+    symbolTable.add_variable("CT_re",  CT_re);
+    symbolTable.add_variable("CTP_re", CTP_re);
+    symbolTable.add_variable("CA_re",  CA_re);
+    symbolTable.add_variable("CAP_re", CAP_re);
+    symbolTable.add_variable("CS_im",  CS_im);
+    symbolTable.add_variable("CSP_im", CSP_im);
+    symbolTable.add_variable("CV_im",  CV_im);
+    symbolTable.add_variable("CVP_im", CVP_im);
+    symbolTable.add_variable("CT_im",  CT_im);
+    symbolTable.add_variable("CTP_im", CTP_im);
+    symbolTable.add_variable("CA_im",  CA_im);
+    symbolTable.add_variable("CAP_im", CAP_im);
+
+    exprtk::expression<double> expression;
+    expression.register_symbol_table(symbolTable);
+
+    exprtk::parser<double> parser;
+
+    if (!parser.compile(expressionString, expression)) {
+      throw std::runtime_error(
+        "Could not compile custom coefficient expression: "
+        + expressionString
+      );
+    }
+
+    return expression.value();
+  }
+
 }//End of utilities namespace
 }//End of CRADLE namespace
 #endif

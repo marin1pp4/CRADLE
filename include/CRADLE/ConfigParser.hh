@@ -54,7 +54,12 @@ struct Cuts {
 struct BetaDecay {
   std::string Default = "Auto";
   std::string FermiFunction = "";
+  std::string CustomCoefficientsFile = "";
   std::string aCustom = "";
+  std::string bCustom = "";
+  std::string cCustom = "";
+  std::string ACustom = "";
+  std::string BCustom = "";
   std::string DCustom = "";
   double PolarisationX = 0;
   double PolarisationY = 0;
