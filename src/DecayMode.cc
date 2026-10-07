@@ -266,11 +266,10 @@ std::vector<Particle*> BetaMinus::Decay(Particle* initState, double Q, double da
   // ==========================================
   // Start: Custom expressions with ExprTk
   // ==========================================
-  std::cout << "a standard = " << a << std::endl;
-  std::cout << "b standard = " << fierz << std::endl;
+  std::ostringstream parentName;
+  parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() - 1];
+  std::string customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
 
-  std::string aCustomExpression = dm.configOptions.betaDecay.aCustom;
-  std::string bCustomExpression = dm.configOptions.betaDecay.bCustom;
   utilities::CustomCoefficientContext ctx;
 
   ctx.Ee = elEnergy;
@@ -297,14 +296,16 @@ std::vector<Particle*> BetaMinus::Decay(Particle* initState, double Q, double da
   ctx.CA = CA;
   ctx.CAP = CAP;
 
-  if (!aCustomExpression.empty()) {
-    a = utilities::EvaluateCustomCoefficient(aCustomExpression,ctx);
+  if (!customFile.empty()) {
+    std::string aCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
+    std::string bCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
+    if (!aCustomExpression.empty()) {
+      a = utilities::EvaluateCustomCoefficient(aCustomExpression,ctx);
+    }
+    if (!bCustomExpression.empty()) {
+      fierz = utilities::EvaluateCustomCoefficient(bCustomExpression,ctx);
+    }
   }
-  if (!bCustomExpression.empty()) {
-    fierz = utilities::EvaluateCustomCoefficient(bCustomExpression,ctx);
-  }
-  std::cout << "a custom = " << a << std::endl;
-  std::cout << "b custom = " << fierz << std::endl;
   // ==========================================
   // End: Custom expressions with ExprTk
   // ==========================================
@@ -447,11 +448,10 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   // ==========================================
   // Start: Custom expressions with ExprTk
   // ==========================================
-  std::cout << "a standard = " << a << std::endl;
-  std::cout << "b standard = " << fierz << std::endl;
+  std::ostringstream parentName;
+  parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() - 1];
+  std::string customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
 
-  std::string aCustomExpression = dm.configOptions.betaDecay.aCustom;
-  std::string bCustomExpression = dm.configOptions.betaDecay.bCustom;
   utilities::CustomCoefficientContext ctx;
 
   ctx.Ee = posEnergy;
@@ -478,14 +478,16 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   ctx.CA = CA;
   ctx.CAP = CAP;
 
-  if (!aCustomExpression.empty()) {
-    a = utilities::EvaluateCustomCoefficient(aCustomExpression,ctx);
+  if (!customFile.empty()) {
+    std::string aCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
+    std::string bCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
+    if (!aCustomExpression.empty()) {
+      a = utilities::EvaluateCustomCoefficient(aCustomExpression,ctx);
+    }
+    if (!bCustomExpression.empty()) {
+      fierz = utilities::EvaluateCustomCoefficient(bCustomExpression,ctx);
+    }
   }
-  if (!bCustomExpression.empty()) {
-    fierz = utilities::EvaluateCustomCoefficient(bCustomExpression,ctx);
-  }
-  std::cout << "a custom = " << a << std::endl;
-  std::cout << "b custom = " << fierz << std::endl;
   // ==========================================
   // End: Custom expressions with ExprTk
   // ==========================================
@@ -1003,18 +1005,6 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
     }
   }
 
-  std::cout << "D INPUT TEST:"
-            << " mf=" << mf
-            << " mgt=" << mgt
-            << " ji=" << j_i
-            << " jf=" << j_f
-            << " CV=(" << CV.real() << "," << CV.imag() << ")"
-            << " CA=(" << CA.real() << "," << CA.imag() << ")"
-            << " CVP=(" << CVP.real() << "," << CVP.imag() << ")"
-            << " CAP=(" << CAP.real() << "," << CAP.imag() << ")"
-            << std::endl;
-
-
   double Z = recoil->GetCharge();
   double betaType = +1.;
   double xi = utilities::CalculateXiBetaDecay(CS, CSP, CT, CTP,CV, CVP, CA, CAP, mf, mgt);
@@ -1028,19 +1018,10 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
   // ==========================================
   // Start: Custom expressions with ExprTk
   // ==========================================
-  std::cout << "a standard = " << a << std::endl;
-  std::cout << "b standard = " << fierz << std::endl;
-  std::cout << "c standard = " << c << std::endl;
-  std::cout << "A standard = " << A << std::endl;
-  std::cout << "B standard = " << B << std::endl;
-  std::cout << "D standard = " << D << std::endl;
+  std::ostringstream parentName;
+  parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() - 1];
+  std::string customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
 
-  std::string aCustomExpression = dm.configOptions.betaDecay.aCustom;
-  std::string bCustomExpression = dm.configOptions.betaDecay.bCustom;
-  std::string cCustomExpression = dm.configOptions.betaDecay.cCustom;
-  std::string ACustomExpression = dm.configOptions.betaDecay.ACustom;
-  std::string BCustomExpression = dm.configOptions.betaDecay.BCustom;
-  std::string DCustomExpression = dm.configOptions.betaDecay.DCustom;
   utilities::CustomCoefficientContext ctx;
 
   ctx.Ee = elEnergy;
@@ -1067,34 +1048,35 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
   ctx.CA = CA;
   ctx.CAP = CAP;
 
-  if (!aCustomExpression.empty()) {
-    a = utilities::EvaluateCustomCoefficient(aCustomExpression,ctx);
-  }
-  if (!bCustomExpression.empty()) {
-    fierz = utilities::EvaluateCustomCoefficient(bCustomExpression,ctx);
-  }
-  if (j_i > 0){
-    if (j_i > 0.5 && !cCustomExpression.empty()) {
-      c = utilities::EvaluateCustomCoefficient(cCustomExpression, ctx);
-    }
-    if (!ACustomExpression.empty()) {
-      A = utilities::EvaluateCustomCoefficient(ACustomExpression,ctx);
-    }
-    if (!BCustomExpression.empty()) {
-      B = utilities::EvaluateCustomCoefficient(BCustomExpression,ctx);
-    }
-    if (j_i == j_f && !DCustomExpression.empty()) {
-      D = utilities::EvaluateCustomCoefficient(DCustomExpression,ctx);
-    }
-  }
+  if (!customFile.empty()) {
+    std::string aCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
+    std::string bCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
+    std::string cCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "c");
+    std::string ACustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "A");
+    std::string BCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "B");
+    std::string DCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "D");
 
-  std::cout << "a custom = " << a << std::endl;
-  std::cout << "b custom = " << fierz << std::endl;
-  std::cout << "c custom = " << c << std::endl;
-  std::cout << "A custom = " << A << std::endl;
-  std::cout << "B custom = " << B << std::endl;
-  std::cout << "D custom = " << D << std::endl;
-
+    if (!aCustomExpression.empty()) {
+      a = utilities::EvaluateCustomCoefficient(aCustomExpression,ctx);
+    }
+    if (!bCustomExpression.empty()) {
+      fierz = utilities::EvaluateCustomCoefficient(bCustomExpression,ctx);
+    }
+    if (j_i > 0){
+      if (j_i > 0.5 && !cCustomExpression.empty()) {
+        c = utilities::EvaluateCustomCoefficient(cCustomExpression, ctx);
+      }
+      if (!ACustomExpression.empty()) {
+        A = utilities::EvaluateCustomCoefficient(ACustomExpression,ctx);
+      }
+      if (!BCustomExpression.empty()) {
+        B = utilities::EvaluateCustomCoefficient(BCustomExpression,ctx);
+      }
+      if (j_i == j_f && !DCustomExpression.empty()) {
+        D = utilities::EvaluateCustomCoefficient(DCustomExpression,ctx);
+      }
+    }
+  }
   // ==========================================
   // End: Custom expressions with ExprTk
   // ==========================================
@@ -1570,7 +1552,6 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
 
   double fierz = utilities::CalculateFierz(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf, recoil->GetCharge(), -1);
 
-  
   double Jpi_init = utilities::GetJpi(initState->GetNeutrons() + initState->GetCharge(), initState->GetCharge(), initState->GetExcitationEnergy());
   double Jpi_final = utilities::GetJpi(recoil->GetNeutrons() + recoil->GetCharge(), recoil->GetCharge(), recoil->GetExcitationEnergy());
   int Labs = std::abs(std::abs(Jpi_final) - std::abs(Jpi_init));
@@ -1623,17 +1604,6 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
   double B = 0;
   double D = 0;
 
-  std::cout << "D INPUT TEST:"
-            << " mf=" << mf
-            << " mgt=" << mgt
-            << " ji=" << j_i
-            << " jf=" << j_f
-            << " CV=(" << CV.real() << "," << CV.imag() << ")"
-            << " CA=(" << CA.real() << "," << CA.imag() << ")"
-            << " CVP=(" << CVP.real() << "," << CVP.imag() << ")"
-            << " CAP=(" << CAP.real() << "," << CAP.imag() << ")"
-            << std::endl;
-
   if (j_i > 0){
     A = polarisation::CalculateBetaAssymetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, j_i, j_f, -1, recoil->GetCharge(), posEnergy);
     B = polarisation::CalculateNeutrinoAssymetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, j_i, j_f, -1, recoil->GetCharge(), posEnergy);
@@ -1656,19 +1626,10 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
   // ==========================================
   // Start: Custom expressions with ExprTk
   // ==========================================
-  std::cout << "a standard = " << a << std::endl;
-  std::cout << "b standard = " << fierz << std::endl;
-  std::cout << "c standard = " << c << std::endl;
-  std::cout << "A standard = " << A << std::endl;
-  std::cout << "B standard = " << B << std::endl;
-  std::cout << "D standard = " << D << std::endl;
+  std::ostringstream parentName;
+  parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() - 1];
+  std::string customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
 
-  std::string aCustomExpression = dm.configOptions.betaDecay.aCustom;
-  std::string bCustomExpression = dm.configOptions.betaDecay.bCustom;
-  std::string cCustomExpression = dm.configOptions.betaDecay.cCustom;
-  std::string ACustomExpression = dm.configOptions.betaDecay.ACustom;
-  std::string BCustomExpression = dm.configOptions.betaDecay.BCustom;
-  std::string DCustomExpression = dm.configOptions.betaDecay.DCustom;
   utilities::CustomCoefficientContext ctx;
 
   ctx.Ee = posEnergy;
@@ -1695,34 +1656,35 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
   ctx.CA = CA;
   ctx.CAP = CAP;
 
-  if (!aCustomExpression.empty()) {
-    a = utilities::EvaluateCustomCoefficient(aCustomExpression,ctx);
-  }
-  if (!bCustomExpression.empty()) {
-    fierz = utilities::EvaluateCustomCoefficient(bCustomExpression,ctx);
-  }
-  if (j_i > 0){
-    if (j_i > 0.5 && !cCustomExpression.empty()) {
-      c = utilities::EvaluateCustomCoefficient(cCustomExpression, ctx);
-    }
-    if (!ACustomExpression.empty()) {
-      A = utilities::EvaluateCustomCoefficient(ACustomExpression,ctx);
-    }
-    if (!BCustomExpression.empty()) {
-      B = utilities::EvaluateCustomCoefficient(BCustomExpression,ctx);
-    }
-    if (j_i == j_f && !DCustomExpression.empty()) {
-      D = utilities::EvaluateCustomCoefficient(DCustomExpression,ctx);
-    }
-  }
+  if (!customFile.empty()) {
+    std::string aCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
+    std::string bCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
+    std::string cCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "c");
+    std::string ACustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "A");
+    std::string BCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "B");
+    std::string DCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "D");
 
-  std::cout << "a custom = " << a << std::endl;
-  std::cout << "b custom = " << fierz << std::endl;
-  std::cout << "c custom = " << c << std::endl;
-  std::cout << "A custom = " << A << std::endl;
-  std::cout << "B custom = " << B << std::endl;
-  std::cout << "D custom = " << D << std::endl;
-
+    if (!aCustomExpression.empty()) {
+      a = utilities::EvaluateCustomCoefficient(aCustomExpression,ctx);
+    }
+    if (!bCustomExpression.empty()) {
+      fierz = utilities::EvaluateCustomCoefficient(bCustomExpression,ctx);
+    }
+    if (j_i > 0){
+      if (j_i > 0.5 && !cCustomExpression.empty()) {
+        c = utilities::EvaluateCustomCoefficient(cCustomExpression, ctx);
+      }
+      if (!ACustomExpression.empty()) {
+        A = utilities::EvaluateCustomCoefficient(ACustomExpression,ctx);
+      }
+      if (!BCustomExpression.empty()) {
+        B = utilities::EvaluateCustomCoefficient(BCustomExpression,ctx);
+      }
+      if (j_i == j_f && !DCustomExpression.empty()) {
+        D = utilities::EvaluateCustomCoefficient(DCustomExpression,ctx);
+      }
+    }
+  }
   // ==========================================
   // End: Custom expressions with ExprTk
   // ==========================================
@@ -1911,29 +1873,17 @@ void DecayMode::SetSpectrumGenerator(SpectrumGenerator* sg) {
 }
 
 BetaMinus::BetaMinus() { }
-
 BetaPlus::BetaPlus() { }
-
 BetaMinusRadiative::BetaMinusRadiative() { }
-
 BetaPlusRadiative::BetaPlusRadiative() { }
-
 BetaMinusVirtualSoft::BetaMinusVirtualSoft() { }
-
 BetaPlusVirtualSoft::BetaPlusVirtualSoft() { }
-
 BetaMinusPolarised::BetaMinusPolarised() { }
-
 BetaPlusPolarised::BetaPlusPolarised() { }
-
 ShellEC::ShellEC () { } 
-
 ConversionElectron::ConversionElectron() { }
-
 Proton::Proton () { }
-
 Alpha::Alpha () { }
-
 Gamma::Gamma () { }
 
 }//End of CRADLE namespace

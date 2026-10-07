@@ -1,0 +1,28 @@
+{
+    "11C": {
+        "a": "(-(CS_re^2+CS_im^2)-(CSP_re^2+CSP_im^2)+(CV_re^2+CV_im^2)+(CVP_re^2+CVP_im^2)+(rM^2/3)*((CT_re^2+CT_im^2)+(CTP_re^2+CTP_im^2)-(CA_re^2+CA_im^2)-(CAP_re^2+CAP_im^2)))/((CS_re^2+CS_im^2)+(CSP_re^2+CSP_im^2)+(CV_re^2+CV_im^2)+(CVP_re^2+CVP_im^2)+rM^2*((CT_re^2+CT_im^2)+(CTP_re^2+CTP_im^2)+(CA_re^2+CA_im^2)+(CAP_re^2+CAP_im^2)))",
+
+        "b": "2*gamma*betaType*(mf^2*((CS_re*CV_re+CS_im*CV_im)+(CSP_re*CVP_re+CSP_im*CVP_im))+mgt^2*((CT_re*CA_re+CT_im*CA_im)+(CTP_re*CAP_re+CTP_im*CAP_im)))/xi",
+
+        "c": "mgt^2*bigLambda*((CT_re^2+CT_im^2)+(CTP_re^2+CTP_im^2)-(CA_re^2+CA_im^2)-(CAP_re^2+CAP_im^2)+2*betaType*coulombCorr*((CT_im*CA_re-CT_re*CA_im)+(CTP_im*CAP_re-CTP_re*CAP_im)))/xi",
+
+        "A": "(mgt^2*smallLambda*(2*betaType*((CT_re*CTP_re+CT_im*CTP_im)-(CA_re*CAP_re+CA_im*CAP_im))+2*coulombCorr*((CT_im*CAP_re-CT_re*CAP_im)+(CTP_im*CA_re-CTP_re*CA_im)))+mf*mgt*sqrt(ji/(ji+1))*(2*((CS_re*CTP_re+CS_im*CTP_im)+(CSP_re*CT_re+CSP_im*CT_im)-(CV_re*CAP_re+CV_im*CAP_im)-(CVP_re*CA_re+CVP_im*CA_im))+2*betaType*coulombCorr*((CS_im*CAP_re-CS_re*CAP_im)+(CSP_im*CA_re-CSP_re*CA_im)-(CV_im*CTP_re-CV_re*CTP_im)-(CVP_im*CT_re-CVP_re*CT_im))))/xi",
+
+        "B": "(2*mgt^2*smallLambda*(gammaRatio*((CT_re*CAP_re+CT_im*CAP_im)+(CTP_re*CA_re+CTP_im*CA_im))+betaType*((CT_re*CTP_re+CT_im*CTP_im)+(CA_re*CAP_re+CA_im*CAP_im)))-mf*mgt*sqrt(ji/(ji+1))*(2*((CS_re*CTP_re+CS_im*CTP_im)+(CSP_re*CT_re+CSP_im*CT_im)+(CV_re*CAP_re+CV_im*CAP_im)+(CVP_re*CA_re+CVP_im*CA_im))+2*betaType*gammaRatio*((CS_re*CAP_re+CS_im*CAP_im)+(CSP_re*CA_re+CSP_im*CA_im)+(CV_re*CTP_re+CV_im*CTP_im)+(CVP_re*CT_re+CVP_im*CT_im))))/xi",
+
+        "D": "(mf*mgt*sqrt(ji/(ji+1))*(-2*coulombCorr*betaType*((CS_re*CA_re+CS_im*CA_im)+(CSP_re*CAP_re+CSP_im*CAP_im)-(CV_re*CT_re+CV_im*CT_im)-(CVP_re*CTP_re+CVP_im*CTP_im))+2*((CS_im*CT_re-CS_re*CT_im)+(CSP_im*CTP_re-CSP_re*CTP_im)-(CV_im*CA_re-CV_re*CA_im)-(CVP_im*CAP_re-CVP_re*CAP_im))))/xi"
+    },
+    "3H": {
+        "a": "(-(CS_re^2+CS_im^2)-(CSP_re^2+CSP_im^2)+(CV_re^2+CV_im^2)+(CVP_re^2+CVP_im^2)+(rM^2/3)*((CT_re^2+CT_im^2)+(CTP_re^2+CTP_im^2)-(CA_re^2+CA_im^2)-(CAP_re^2+CAP_im^2)))/((CS_re^2+CS_im^2)+(CSP_re^2+CSP_im^2)+(CV_re^2+CV_im^2)+(CVP_re^2+CVP_im^2)+rM^2*((CT_re^2+CT_im^2)+(CTP_re^2+CTP_im^2)+(CA_re^2+CA_im^2)+(CAP_re^2+CAP_im^2)))",
+
+        "b": "2*gamma*betaType*(mf^2*((CS_re*CV_re+CS_im*CV_im)+(CSP_re*CVP_re+CSP_im*CVP_im))+mgt^2*((CT_re*CA_re+CT_im*CA_im)+(CTP_re*CAP_re+CTP_im*CAP_im)))/xi",
+
+        "c": "mgt^2*bigLambda*((CT_re^2+CT_im^2)+(CTP_re^2+CTP_im^2)-(CA_re^2+CA_im^2)-(CAP_re^2+CAP_im^2)+2*betaType*coulombCorr*((CT_im*CA_re-CT_re*CA_im)+(CTP_im*CAP_re-CTP_re*CAP_im)))/xi",
+
+        "A": "(mgt^2*smallLambda*(2*betaType*((CT_re*CTP_re+CT_im*CTP_im)-(CA_re*CAP_re+CA_im*CAP_im))+2*coulombCorr*((CT_im*CAP_re-CT_re*CAP_im)+(CTP_im*CA_re-CTP_re*CA_im)))+mf*mgt*sqrt(ji/(ji+1))*(2*((CS_re*CTP_re+CS_im*CTP_im)+(CSP_re*CT_re+CSP_im*CT_im)-(CV_re*CAP_re+CV_im*CAP_im)-(CVP_re*CA_re+CVP_im*CA_im))+2*betaType*coulombCorr*((CS_im*CAP_re-CS_re*CAP_im)+(CSP_im*CA_re-CSP_re*CA_im)-(CV_im*CTP_re-CV_re*CTP_im)-(CVP_im*CT_re-CVP_re*CT_im))))/xi",
+
+        "B": "(2*mgt^2*smallLambda*(gammaRatio*((CT_re*CAP_re+CT_im*CAP_im)+(CTP_re*CA_re+CTP_im*CA_im))+betaType*((CT_re*CTP_re+CT_im*CTP_im)+(CA_re*CAP_re+CA_im*CAP_im)))-mf*mgt*sqrt(ji/(ji+1))*(2*((CS_re*CTP_re+CS_im*CTP_im)+(CSP_re*CT_re+CSP_im*CT_im)+(CV_re*CAP_re+CV_im*CAP_im)+(CVP_re*CA_re+CVP_im*CA_im))+2*betaType*gammaRatio*((CS_re*CAP_re+CS_im*CAP_im)+(CSP_re*CA_re+CSP_im*CA_im)+(CV_re*CTP_re+CV_im*CTP_im)+(CVP_re*CT_re+CVP_im*CT_im))))/xi",
+
+        "D": "(mf*mgt*sqrt(ji/(ji+1))*(-2*coulombCorr*betaType*((CS_re*CA_re+CS_im*CA_im)+(CSP_re*CAP_re+CSP_im*CAP_im)-(CV_re*CT_re+CV_im*CT_im)-(CVP_re*CTP_re+CVP_im*CTP_im))+2*((CS_im*CT_re-CS_re*CT_im)+(CSP_im*CTP_re-CSP_re*CTP_im)-(CV_im*CA_re-CV_re*CA_im)-(CVP_im*CAP_re-CVP_re*CAP_im))))/xi"
+    }
+}

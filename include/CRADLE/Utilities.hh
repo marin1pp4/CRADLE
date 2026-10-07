@@ -356,16 +356,6 @@ namespace utilities {
     }
   }
 
-  inline double CalculateMatrixElementRatio(double rho, double gA_ref = 1.2754, double gV_ref = 1.0){
-    // Convert the experimental mixing ratio
-    //
-    //   rho = (g_A/g_V)_ref * (M_GT/M_F)
-    //
-    // into the nuclear matrix-element ratio M_GT/M_F.
-    // The reference couplings are used only for this conversion.
-    return rho * gV_ref / gA_ref;
-  }
-
   inline vector<double> NormaliseVector(const vector<double>& v) {
     vector<double> newV (v);
     double norm = GetNorm(v);
@@ -1226,9 +1216,19 @@ inline double GetBetaCorrections(int Z, int A, double Q, double E, int betaType,
    return dist;
   }
 
-  //Context structure for custom coefficients implementation
-  struct CustomCoefficientContext
-  {
+  //develop_3
+  inline double CalculateMatrixElementRatio(double rho, double gA_ref = 1.2754, double gV_ref = 1.0){
+    return rho * gV_ref / gA_ref;
+  }
+
+  inline std::string GetCustomCoefficientExpression(const std::string& filename, const std::string& transition, const std::string& coefficient){
+    boost::property_tree::ptree tree;
+    boost::property_tree::read_json(filename, tree);
+    std::string path = transition + "." + coefficient;
+    return tree.get<std::string>(path, "");
+  }
+
+  struct CustomCoefficientContext{
     double Ee = 0.;
     double rho = std::nan("");
     double rM = std::nan("");
@@ -1254,11 +1254,7 @@ inline double GetBetaCorrections(int Z, int A, double Q, double E, int betaType,
     std::complex<double> CAP{0.,0.};
   };
 
-  inline double EvaluateCustomCoefficient(
-    const std::string& expressionString,
-    const CustomCoefficientContext& ctx)
-  {
-
+  inline double EvaluateCustomCoefficient(const std::string& expressionString, const CustomCoefficientContext& ctx){
     double Ee = ctx.Ee;
     double rho = ctx.rho;
     double rM = ctx.rM;

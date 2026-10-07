@@ -1,0 +1,18 @@
+{
+    "11C": {
+        "a": "0",
+        "b": "0",
+        "c": "0",
+        "A": "0",
+        "B": "0",
+        "D": "(mf*mgt*sqrt(ji/(ji+1))*(-2*coulombCorr*betaType*((CS_re*CA_re+CS_im*CA_im)+(CSP_re*CAP_re+CSP_im*CAP_im)-(CV_re*CT_re+CV_im*CT_im)-(CVP_re*CTP_re+CVP_im*CTP_im))+2*((CS_im*CT_re-CS_re*CT_im)+(CSP_im*CTP_re-CSP_re*CTP_im)-(CV_im*CA_re-CV_re*CA_im)-(CVP_im*CAP_re-CVP_re*CAP_im))))/xi"
+    },
+    "3H": {
+        "a": "0",
+        "b": "0",
+        "c": "0",
+        "A": "0",
+        "B": "0",
+        "D": "(mf*mgt*sqrt(ji/(ji+1))*(-2*coulombCorr*betaType*((CS_re*CA_re+CS_im*CA_im)+(CSP_re*CAP_re+CSP_im*CAP_im)-(CV_re*CT_re+CV_im*CT_im)-(CVP_re*CTP_re+CVP_im*CTP_im))+2*((CS_im*CT_re-CS_re*CT_im)+(CSP_im*CTP_re-CSP_re*CTP_im)-(CV_im*CA_re-CV_re*CA_im)-(CVP_im*CAP_re-CVP_re*CAP_im))))/xi"
+    }
+}
