@@ -1,0 +1,10 @@
+{
+    "11C": {
+        "a": "0",
+        "b": "0",
+        "c": "mgt^2*bigLambda*((CT_re^2+CT_im^2)+(CTP_re^2+CTP_im^2)-(CA_re^2+CA_im^2)-(CAP_re^2+CAP_im^2)+2*betaType*coulombCorr*((CT_im*CA_re-CT_re*CA_im)+(CTP_im*CAP_re-CTP_re*CAP_im)))/xi",
+        "A": "0",
+        "B": "0",
+        "D": "0"
+    }
+}

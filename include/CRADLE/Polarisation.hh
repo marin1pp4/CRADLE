@@ -402,6 +402,37 @@ namespace polarisation {
     }
     return max_pos;
   }
+
+  inline double AnalyticalMinimumAngCorrFactor(double a, double b, double c, double A, double B, double D, double E, double u,double v){
+
+    // Electron/positron velocity
+    const double beta = std::sqrt(
+      1.0 - EMASSC2 * EMASSC2 / (E * E)
+    );
+
+    // Geometric factor
+    const double s = std::sqrt(
+      (1.0 - u * u) * (1.0 - v * v)
+    );
+
+    // Phi-independent contribution
+    const double W0 =
+    1.0
+    + b * EMASSC2 / E
+    + beta * (a - 2.0 * c / 3.0) * u * v
+    + A * beta * u
+    + B * v;
+
+    // Coefficients of cos(phi) and sin(phi)
+    const double C =
+    beta * s * (a + c / 3.0);
+
+    const double S =
+    D * beta * s;
+
+    // Exact minimum with respect to phi
+    return W0 - std::sqrt(C * C + S * S);
+  }
   
 }//closing polarisation namespace
 }//closing CRADLE namespace

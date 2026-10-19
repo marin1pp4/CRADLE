@@ -75,7 +75,17 @@ endif()
 # set(INSTALL_INCLUDE_DIR ${PROJECT_BINARY_DIR}/include CACHE PATH
 #   "Installation directory for header files")
 
-add_library(Cradle SHARED src/ConfigParser.cc src/DecayChannel.cc src/DecayManager.cc src/DecayMode.cc src/Particle.cc src/SpectrumGenerator.cc)
+add_library(Cradle SHARED
+    src/ConfigParser.cc
+    src/DecayChannel.cc
+    src/DecayManager.cc
+    src/DecayMode.cc
+    src/Particle.cc
+    src/SpectrumGenerator.cc
+    src/CustomCoefficients.cc
+    src/CustomCoefficientValidator.cc
+)
+
 add_executable(CRADLE++ src/CRADLE++.cc)
 
 find_package(Boost REQUIRED)

@@ -1,0 +1,10 @@
+{
+    "11C": {
+        "a": "0",
+        "b": "0",
+        "c": "0",
+        "A": "0",
+        "B": "(2*mgt^2*smallLambda*(gammaRatio*((CT_re*CAP_re+CT_im*CAP_im)+(CTP_re*CA_re+CTP_im*CA_im))+betaType*((CT_re*CTP_re+CT_im*CTP_im)+(CA_re*CAP_re+CA_im*CAP_im)))-mf*mgt*sqrt(ji/(ji+1))*(2*((CS_re*CTP_re+CS_im*CTP_im)+(CSP_re*CT_re+CSP_im*CT_im)+(CV_re*CAP_re+CV_im*CAP_im)+(CVP_re*CA_re+CVP_im*CA_im))+2*betaType*gammaRatio*((CS_re*CAP_re+CS_im*CAP_im)+(CSP_re*CA_re+CSP_im*CA_im)+(CV_re*CTP_re+CV_im*CTP_im)+(CVP_re*CT_re+CVP_im*CT_im))))/xi",
+        "D": "0"
+    }
+}

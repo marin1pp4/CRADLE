@@ -1,0 +1,10 @@
+{
+    "11C": {
+        "a": "0",
+        "b": "2*gamma*betaType*(mf^2*((CS_re*CV_re+CS_im*CV_im)+(CSP_re*CVP_re+CSP_im*CVP_im))+mgt^2*((CT_re*CA_re+CT_im*CA_im)+(CTP_re*CAP_re+CTP_im*CAP_im)))/xi",
+        "c": "0",
+        "A": "0",
+        "B": "0",
+        "D": "0"
+    }
+}

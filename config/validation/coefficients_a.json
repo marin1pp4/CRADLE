@@ -1,0 +1,10 @@
+{
+    "11C": {
+        "a": "(-(CS_re^2+CS_im^2)-(CSP_re^2+CSP_im^2)+(CV_re^2+CV_im^2)+(CVP_re^2+CVP_im^2)+(rM^2/3)*((CT_re^2+CT_im^2)+(CTP_re^2+CTP_im^2)-(CA_re^2+CA_im^2)-(CAP_re^2+CAP_im^2)))/((CS_re^2+CS_im^2)+(CSP_re^2+CSP_im^2)+(CV_re^2+CV_im^2)+(CVP_re^2+CVP_im^2)+rM^2*((CT_re^2+CT_im^2)+(CTP_re^2+CTP_im^2)+(CA_re^2+CA_im^2)+(CAP_re^2+CAP_im^2)))",
+        "b": "0",
+        "c": "0",
+        "A": "0",
+        "B": "0",
+        "D": "0"
+    }
+}

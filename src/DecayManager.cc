@@ -281,9 +281,28 @@ bool DecayManager::GenerateNucleus(string name, int Z, int A) {
     //cout << "Modifier : " << modifier << endl;
     //cout << "\n" <<endl;
 
+    //bool PolarisedNuclei = false;
+    //if ((configOptions.betaDecay.PolarisationX != 0 || configOptions.betaDecay.PolarisationY != 0 || configOptions.betaDecay.PolarisationZ != 0) && configOptions.betaDecay.PolarisationMag != 0)
+      //PolarisedNuclei = true;
+
+    //NEW CONDITION TO HAVE POLARISATION AXIS WITH ALIGNMENT WO POLARISATION MAG
     bool PolarisedNuclei = false;
-    if ((configOptions.betaDecay.PolarisationX != 0 || configOptions.betaDecay.PolarisationY != 0 || configOptions.betaDecay.PolarisationZ != 0) && configOptions.betaDecay.PolarisationMag != 0)
+
+    bool hasPolarisationAxis =
+    (configOptions.betaDecay.PolarisationX != 0 ||
+    configOptions.betaDecay.PolarisationY != 0 ||
+    configOptions.betaDecay.PolarisationZ != 0);
+
+    bool hasPolarisation =
+    (configOptions.betaDecay.PolarisationMag != 0);
+
+    bool hasAlignment =
+    (configOptions.betaDecay.Alignment != 0);
+
+    if (hasPolarisationAxis && (hasPolarisation || hasAlignment)) {
       PolarisedNuclei = true;
+    }
+
 
     if (Q > 0. ) {
       //std::cout << "Q > 0" << "\n" ;

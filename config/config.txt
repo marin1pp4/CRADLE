@@ -9,8 +9,8 @@ CT=(0.1,0.0)
 CTP=(0.1,0.0)
 CA=(1.2754,0.0)
 CAP=(1.2754,0.0)
-#a=0.0
-#b=0.0
+#a=0.
+#b=0.
 
 [Cuts]
 Distance=1.0
@@ -26,5 +26,5 @@ RadiativeCorrection=false
 PolarisationX=0.
 PolarisationY=0.
 PolarisationZ=1.0
-PolarisationMag=1.0
-Alignment=0.
+PolarisationMag=0.
+Alignment=1.0

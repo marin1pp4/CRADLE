@@ -13,6 +13,7 @@
 
 //develop_3
 #include "exprtk.hpp"
+#include "CRADLE/CustomCoefficients.hh"
 
 namespace CRADLE {
 
@@ -270,7 +271,7 @@ std::vector<Particle*> BetaMinus::Decay(Particle* initState, double Q, double da
   parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() - 1];
   std::string customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
 
-  utilities::CustomCoefficientContext ctx;
+  customcoefficients::CustomCoefficientContext ctx;
 
   ctx.Ee = elEnergy;
   ctx.rho = rho;
@@ -297,13 +298,13 @@ std::vector<Particle*> BetaMinus::Decay(Particle* initState, double Q, double da
   ctx.CAP = CAP;
 
   if (!customFile.empty()) {
-    std::string aCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
-    std::string bCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
+    std::string aCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
+    std::string bCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
     if (!aCustomExpression.empty()) {
-      a = utilities::EvaluateCustomCoefficient(aCustomExpression,ctx);
+      a = customcoefficients::EvaluateCustomCoefficient(aCustomExpression,ctx);
     }
     if (!bCustomExpression.empty()) {
-      fierz = utilities::EvaluateCustomCoefficient(bCustomExpression,ctx);
+      fierz = customcoefficients::EvaluateCustomCoefficient(bCustomExpression,ctx);
     }
   }
   // ==========================================
@@ -355,6 +356,7 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   ublas::vector<double> enubarDir = utilities::RandomDirection();
   ublas::vector<double> posFourMomentum (4);
 
+  // Define the general variables
   std::complex<double> CS  = dm.configOptions.couplingConstants.CS;
   std::complex<double> CSP = dm.configOptions.couplingConstants.CSP;
   std::complex<double> CV  = dm.configOptions.couplingConstants.CV;
@@ -368,6 +370,9 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   double mf = 0.;
   double mgt = 0.;
   double rho = std::nan("");
+  const std::string& customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
+  std::string aCustomExpression = "";
+  std::string bCustomExpression = "";
 
   /////////ajout de SL 12/05/2023//////////////
 
@@ -412,49 +417,21 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   double Jpi_final = utilities::GetJpi(recoil->GetNeutrons() + recoil->GetCharge(), recoil->GetCharge(), recoil->GetExcitationEnergy());
   int Labs = std::abs(std::abs(Jpi_final) - std::abs(Jpi_init));
 
-  std::vector<std::vector<double> >* dist;
-  try {
-    dist = DecayManager::GetInstance().GetDistribution(oss.str());
-  } catch (const std::invalid_argument& e) {
-    bool advancedFermi = false;
-    if (dm.configOptions.betaDecay.FermiFunction == "Advanced") { //// réécriture de la condition par SL 10/05/2023
-      advancedFermi = true;
-    }
-    dist = spectrumGen->GenerateSpectrum(initState, recoil, E0, Labs); //// changement de Q en E0 par SL 10/05/2023
-    double gamma = std::sqrt(1-std::pow(utilities::FINESTRUCTURE*recoil->GetCharge(), 2.));
-    int i=0;
-    for ( int i = 0; i<dist->size(); i++) {                                  ////// changement de boucle et element par ((*dist)[i]) par SL 10/05/2023
-      double E = ((*dist)[i])[0]+utilities::EMASSC2;
-      double SH = ((*dist)[i])[1];
-      ((*dist)[i])[1] = SH*(1+gamma*fierz*utilities::EMASSC2/E);
-    }
-    DecayManager::GetInstance().RegisterDistribution(oss.str(), dist);
-    }
-
-  double posEnergy = utilities::RandomFromDistribution(*dist) + utilities::EMASSC2;
-  double posMomentum = std::sqrt(posEnergy*posEnergy-std::pow(utilities::EMASSC2, 2.));
-  double j_i = std::abs(Jpi_init);
-  double j_f = std::abs(Jpi_final);
+  // ==========================================
+  // Start: Custom expressions with ExprTk
+  // ==========================================
   double Z = recoil->GetCharge();
   double betaType = -1.;
   double xi = utilities::CalculateXiBetaDecay(CS,CSP,CT,CTP,CV,CVP,CA,CAP,mf, mgt);
   double gamma = std::sqrt(1. - std::pow(utilities::FINESTRUCTURE * Z, 2.));
-  double gammaRatio = gamma * utilities::EMASSC2 / posEnergy;
-  double coulombCorr = utilities::FINESTRUCTURE*recoil->GetCharge()/std::sqrt(posEnergy*posEnergy/utilities::EMASSC2/     utilities::EMASSC2-1.);
+  double j_i = std::abs(Jpi_init);
+  double j_f = std::abs(Jpi_final);
   double bigLambda = polarisation::BigLambdaJiJfFactor(j_i, j_f);
   double smallLambda = polarisation::SmallLambdaJiJfFactor(j_i, j_f);
-  double rM = mgt / mf;
+  double rM = (mf != 0.) ? mgt / mf : std::nan("");
 
-  // ==========================================
-  // Start: Custom expressions with ExprTk
-  // ==========================================
-  std::ostringstream parentName;
-  parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() - 1];
-  std::string customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
+  customcoefficients::CustomCoefficientContext ctx;
 
-  utilities::CustomCoefficientContext ctx;
-
-  ctx.Ee = posEnergy;
   ctx.rho = rho;
   ctx.rM = rM;
   ctx.mf = mf;
@@ -465,8 +442,6 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   ctx.betaType = betaType;
   ctx.xi = xi;
   ctx.gamma = gamma;
-  ctx.gammaRatio = gammaRatio;
-  ctx.coulombCorr = coulombCorr;
   ctx.bigLambda = bigLambda;
   ctx.smallLambda = smallLambda;
   ctx.CS = CS;
@@ -478,15 +453,55 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   ctx.CA = CA;
   ctx.CAP = CAP;
 
+
   if (!customFile.empty()) {
-    std::string aCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
-    std::string bCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
-    if (!aCustomExpression.empty()) {
-      a = utilities::EvaluateCustomCoefficient(aCustomExpression,ctx);
+    std::ostringstream parentName;
+    parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() -1];
+
+    aCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
+    bCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
+  }
+
+  std::vector<std::vector<double> >* dist;
+  try {
+    dist = DecayManager::GetInstance().GetDistribution(oss.str());
+  } catch (const std::invalid_argument& e) {
+      bool advancedFermi = false;
+      if (dm.configOptions.betaDecay.FermiFunction == "Advanced") { //// réécriture de la condition par SL  10/05/2023
+        advancedFermi = true;
+      }
+      dist = spectrumGen->GenerateSpectrum(initState, recoil, E0, Labs); //// changement de Q en E0 par SL 10/05/2023
+      int i=0;
+      for ( int i = 0; i<dist->size(); i++) {////// changement de boucle et element par ((*dist)[i]) par SL 10/05/2023
+        double E = ((*dist)[i])[0]+utilities::EMASSC2;
+
+        ctx.Ee = E;
+        ctx.gammaRatio = gamma * utilities::EMASSC2 / E;
+        ctx.coulombCorr = utilities::FINESTRUCTURE*Z/std::sqrt(E*E/utilities::EMASSC2/utilities::EMASSC2-1.);
+
+        // Standard Fierz coefficient
+        double b = gamma * fierz;
+
+        if (!bCustomExpression.empty()) {
+          b = customcoefficients::EvaluateCustomCoefficient(bCustomExpression,ctx);
+        }
+
+        double SH = ((*dist)[i])[1];
+        ((*dist)[i])[1] = SH*(1 + b*utilities::EMASSC2/E);
+      }
+      DecayManager::GetInstance().RegisterDistribution(oss.str(), dist);
     }
-    if (!bCustomExpression.empty()) {
-      fierz = utilities::EvaluateCustomCoefficient(bCustomExpression,ctx);
-    }
+
+  double posEnergy = utilities::RandomFromDistribution(*dist) + utilities::EMASSC2;
+  double posMomentum = std::sqrt(posEnergy*posEnergy-std::pow(utilities::EMASSC2, 2.));
+
+  // Redefine the context with posEnergy
+  ctx.Ee = posEnergy;
+  ctx.gammaRatio = gamma * utilities::EMASSC2/posEnergy;
+  ctx.coulombCorr = utilities::FINESTRUCTURE*Z/std::sqrt(posEnergy*posEnergy/(utilities::EMASSC2*utilities::EMASSC2) - 1.);
+
+  if (!aCustomExpression.empty()) {
+    a = customcoefficients::EvaluateCustomCoefficient(aCustomExpression,ctx);
   }
   // ==========================================
   // End: Custom expressions with ExprTk
@@ -1022,7 +1037,7 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
   parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() - 1];
   std::string customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
 
-  utilities::CustomCoefficientContext ctx;
+  customcoefficients::CustomCoefficientContext ctx;
 
   ctx.Ee = elEnergy;
   ctx.rho = rho;
@@ -1049,31 +1064,31 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
   ctx.CAP = CAP;
 
   if (!customFile.empty()) {
-    std::string aCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
-    std::string bCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
-    std::string cCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "c");
-    std::string ACustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "A");
-    std::string BCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "B");
-    std::string DCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "D");
+    std::string aCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
+    std::string bCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
+    std::string cCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "c");
+    std::string ACustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "A");
+    std::string BCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "B");
+    std::string DCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "D");
 
     if (!aCustomExpression.empty()) {
-      a = utilities::EvaluateCustomCoefficient(aCustomExpression,ctx);
+      a = customcoefficients::EvaluateCustomCoefficient(aCustomExpression,ctx);
     }
     if (!bCustomExpression.empty()) {
-      fierz = utilities::EvaluateCustomCoefficient(bCustomExpression,ctx);
+      fierz = customcoefficients::EvaluateCustomCoefficient(bCustomExpression,ctx);
     }
     if (j_i > 0){
       if (j_i > 0.5 && !cCustomExpression.empty()) {
-        c = utilities::EvaluateCustomCoefficient(cCustomExpression, ctx);
+        c = customcoefficients::EvaluateCustomCoefficient(cCustomExpression, ctx);
       }
       if (!ACustomExpression.empty()) {
-        A = utilities::EvaluateCustomCoefficient(ACustomExpression,ctx);
+        A = customcoefficients::EvaluateCustomCoefficient(ACustomExpression,ctx);
       }
       if (!BCustomExpression.empty()) {
-        B = utilities::EvaluateCustomCoefficient(BCustomExpression,ctx);
+        B = customcoefficients::EvaluateCustomCoefficient(BCustomExpression,ctx);
       }
       if (j_i == j_f && !DCustomExpression.empty()) {
-        D = utilities::EvaluateCustomCoefficient(DCustomExpression,ctx);
+        D = customcoefficients::EvaluateCustomCoefficient(DCustomExpression,ctx);
       }
     }
   }
@@ -1505,19 +1520,27 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
 
   ublas::vector<double> posFourMomentum (4);
 
-  std::complex<double> CS = dm.configOptions.couplingConstants.CS;
+  // Define the general variables
+  std::complex<double> CS  = dm.configOptions.couplingConstants.CS;
   std::complex<double> CSP = dm.configOptions.couplingConstants.CSP;
-  std::complex<double> CV = dm.configOptions.couplingConstants.CV;
+  std::complex<double> CV  = dm.configOptions.couplingConstants.CV;
   std::complex<double> CVP = dm.configOptions.couplingConstants.CVP;
-  std::complex<double> CA = dm.configOptions.couplingConstants.CA;
+  std::complex<double> CA  = dm.configOptions.couplingConstants.CA;
   std::complex<double> CAP = dm.configOptions.couplingConstants.CAP;
-  std::complex<double> CT = dm.configOptions.couplingConstants.CT;
+  std::complex<double> CT  = dm.configOptions.couplingConstants.CT;
   std::complex<double> CTP = dm.configOptions.couplingConstants.CTP;
   double a_conf = dm.configOptions.couplingConstants.a;
   double b_conf = dm.configOptions.couplingConstants.b;
   double mf = 0.;
   double mgt = 0.;
   double rho = std::nan("");
+  const std::string& customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
+  std::string aCustomExpression = "";
+  std::string bCustomExpression = "";
+  std::string cCustomExpression = "";
+  std::string ACustomExpression = "";
+  std::string BCustomExpression = "";
+  std::string DCustomExpression = "";
 
   /////////ajout de SL 12/05/2023//////////////
 
@@ -1556,6 +1579,48 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
   double Jpi_final = utilities::GetJpi(recoil->GetNeutrons() + recoil->GetCharge(), recoil->GetCharge(), recoil->GetExcitationEnergy());
   int Labs = std::abs(std::abs(Jpi_final) - std::abs(Jpi_init));
 
+  // ==========================================
+  // Start: Custom expressions with ExprTk
+  // ==========================================
+  double Z = recoil->GetCharge();
+  double betaType = -1.;
+  double xi = utilities::CalculateXiBetaDecay(CS,CSP,CT,CTP,CV,CVP,CA,CAP,mf, mgt);
+  double gamma = std::sqrt(1. - std::pow(utilities::FINESTRUCTURE * Z, 2.));
+  double rM = (mf != 0.) ? mgt / mf : std::nan("");
+
+  customcoefficients::CustomCoefficientContext ctx;
+
+  ctx.rho = rho;
+  ctx.rM = rM;
+  ctx.mf = mf;
+  ctx.mgt = mgt;
+  ctx.Z = Z;
+  ctx.betaType = betaType;
+  ctx.xi = xi;
+  ctx.gamma = gamma;
+  ctx.CS = CS;
+  ctx.CSP = CSP;
+  ctx.CV = CV;
+  ctx.CVP = CVP;
+  ctx.CT = CT;
+  ctx.CTP = CTP;
+  ctx.CA = CA;
+  ctx.CAP = CAP;
+
+
+  if (!customFile.empty()) {
+    std::ostringstream parentName;
+    parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() -1];
+
+    aCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
+    bCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
+    cCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "c");
+    ACustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "A");
+    BCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "B");
+    DCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "D");
+  }
+
+
   std::vector<std::vector<double> >* dist;
   try {
     dist = DecayManager::GetInstance().GetDistribution(oss.str());
@@ -1567,11 +1632,21 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
     dist = spectrumGen->GenerateSpectrum(initState, recoil, E0, Labs); //// changement de Q en E0 par SL 10/05/2023
     for ( int i = 0; i<dist->size(); i++) {                                  ////// changement de boucle et element par ((*dist)[i]) par SL 10/05/2023
       double E = ((*dist)[i])[0]+utilities::EMASSC2;
+
+      ctx.Ee = E;
+      ctx.gammaRatio = gamma * utilities::EMASSC2 / E;
+      ctx.coulombCorr = utilities::FINESTRUCTURE*Z/std::sqrt(E*E/utilities::EMASSC2/utilities::EMASSC2-1.);
+
+      if (!bCustomExpression.empty()) {
+        fierz = customcoefficients::EvaluateCustomCoefficient(bCustomExpression,ctx);
+      }
+
       double SH = ((*dist)[i])[1];
       ((*dist)[i])[1] = SH*(1+fierz*utilities::EMASSC2/E);
     }
     DecayManager::GetInstance().RegisterDistribution(oss.str(), dist);
     }
+
   double posEnergy = utilities::RandomFromDistribution(*dist)+utilities::EMASSC2;
   double posMomentum = std::sqrt(posEnergy*posEnergy-std::pow(utilities::EMASSC2, 2.));
   
@@ -1613,76 +1688,36 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
     }
   }
 
-  double Z = recoil->GetCharge();
-  double betaType = -1.;
-  double xi = utilities::CalculateXiBetaDecay(CS, CSP, CT, CTP,CV, CVP, CA, CAP, mf, mgt);
-  double gamma = std::sqrt(1. - std::pow(utilities::FINESTRUCTURE * Z, 2.));
-  double gammaRatio = gamma * utilities::EMASSC2 / posEnergy;
-  double coulombCorr = utilities::FINESTRUCTURE*recoil->GetCharge()/std::sqrt(posEnergy*posEnergy/utilities::EMASSC2/utilities::EMASSC2-1.);
+  // Redefine the context with posEnergy
   double bigLambda = polarisation::BigLambdaJiJfFactor(j_i, j_f);
   double smallLambda = polarisation::SmallLambdaJiJfFactor(j_i, j_f);
-  double rM = mgt / mf;
-
-  // ==========================================
-  // Start: Custom expressions with ExprTk
-  // ==========================================
-  std::ostringstream parentName;
-  parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() - 1];
-  std::string customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
-
-  utilities::CustomCoefficientContext ctx;
 
   ctx.Ee = posEnergy;
-  ctx.rho = rho;
-  ctx.rM = rM;
-  ctx.mf = mf;
-  ctx.mgt = mgt;
+  ctx.gammaRatio = gamma * utilities::EMASSC2/posEnergy;
+  ctx.coulombCorr = utilities::FINESTRUCTURE*Z/std::sqrt(posEnergy*posEnergy/(utilities::EMASSC2*utilities::EMASSC2) - 1.);
   ctx.ji = j_i;
   ctx.jf = j_f;
-  ctx.Z = Z;
-  ctx.betaType = betaType;
-  ctx.xi = xi;
-  ctx.gamma = gamma;
-  ctx.gammaRatio = gammaRatio;
-  ctx.coulombCorr = coulombCorr;
   ctx.bigLambda = bigLambda;
   ctx.smallLambda = smallLambda;
-  ctx.CS = CS;
-  ctx.CSP = CSP;
-  ctx.CV = CV;
-  ctx.CVP = CVP;
-  ctx.CT = CT;
-  ctx.CTP = CTP;
-  ctx.CA = CA;
-  ctx.CAP = CAP;
 
-  if (!customFile.empty()) {
-    std::string aCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
-    std::string bCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
-    std::string cCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "c");
-    std::string ACustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "A");
-    std::string BCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "B");
-    std::string DCustomExpression = utilities::GetCustomCoefficientExpression(customFile, parentName.str(), "D");
-
-    if (!aCustomExpression.empty()) {
-      a = utilities::EvaluateCustomCoefficient(aCustomExpression,ctx);
+  if (!aCustomExpression.empty()) {
+    a = customcoefficients::EvaluateCustomCoefficient(aCustomExpression,ctx);
+  }
+  if (!bCustomExpression.empty()) {
+    fierz = customcoefficients::EvaluateCustomCoefficient(bCustomExpression, ctx);
+  }
+  if (j_i > 0){
+    if (j_i > 0.5 && !cCustomExpression.empty()) {
+      c = customcoefficients::EvaluateCustomCoefficient(cCustomExpression, ctx);
     }
-    if (!bCustomExpression.empty()) {
-      fierz = utilities::EvaluateCustomCoefficient(bCustomExpression,ctx);
+    if (!ACustomExpression.empty()) {
+      A = customcoefficients::EvaluateCustomCoefficient(ACustomExpression,ctx);
     }
-    if (j_i > 0){
-      if (j_i > 0.5 && !cCustomExpression.empty()) {
-        c = utilities::EvaluateCustomCoefficient(cCustomExpression, ctx);
-      }
-      if (!ACustomExpression.empty()) {
-        A = utilities::EvaluateCustomCoefficient(ACustomExpression,ctx);
-      }
-      if (!BCustomExpression.empty()) {
-        B = utilities::EvaluateCustomCoefficient(BCustomExpression,ctx);
-      }
-      if (j_i == j_f && !DCustomExpression.empty()) {
-        D = utilities::EvaluateCustomCoefficient(DCustomExpression,ctx);
-      }
+    if (!BCustomExpression.empty()) {
+      B = customcoefficients::EvaluateCustomCoefficient(BCustomExpression,ctx);
+    }
+    if (j_i == j_f && !DCustomExpression.empty()) {
+      D = customcoefficients::EvaluateCustomCoefficient(DCustomExpression,ctx);
     }
   }
   // ==========================================
