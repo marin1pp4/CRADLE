@@ -1,9 +1,17 @@
 #include "CRADLE/CustomCoefficientValidator.hh"
 #include "CRADLE/Polarisation.hh"
+#include "CRADLE/Utilities.hh"
 
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <algorithm>
+#include <iomanip>
+#include <iostream>
+#include <mutex>
+#include <set>
+#include <sstream>
+#include <chrono>
 
 namespace CRADLE {
 namespace polarisation {
@@ -47,9 +55,7 @@ GridScanResult GridScanMinimum(
             !std::isfinite(coeff.B) ||
             !std::isfinite(coeff.D)) {
 
-            throw std::runtime_error(
-                "Non-finite correlation coefficient"
-            );
+            throw std::runtime_error("Non-finite correlation coefficient");
         }
 
         // Loop over electron polar angle.
@@ -75,7 +81,6 @@ GridScanResult GridScanMinimum(
 
                 // Update global minimum.
                 if (W < result.minimumValue) {
-
                     result.minimumValue = W;
                     result.energy = Ee;
                     result.u = u;
@@ -89,6 +94,190 @@ GridScanResult GridScanMinimum(
     result.negativeFound = (result.minimumValue < 0.0);
 
     return result;
+}
+
+GridScanResult ValidateCorrelationCoefficients(
+    double E_min,
+    double E_max,
+    int N_E,
+    int N_u,
+    int N_v,
+    const customcoefficients::CustomCoefficientContext& ctx,
+    const customcoefficients::BetaTransitionParameters& parameters,
+    const customcoefficients::CustomCoefficientExpressions& expressions)
+{
+    auto evaluateCoefficients = [&](double Ee) {
+        return customcoefficients::EvaluateCorrelationCoefficients(Ee, ctx, parameters, expressions);
+    };
+
+    return GridScanMinimum(E_min, E_max, N_E, N_u, N_v, evaluateCoefficients);
+}
+
+void ValidateTransitionOnce(
+    const std::string& transitionKey,
+    const std::vector<std::vector<double>>& spectrum,
+    const customcoefficients::CustomCoefficientContext& ctx,
+    const customcoefficients::BetaTransitionParameters& parameters,
+    const customcoefficients::CustomCoefficientExpressions& expressions,
+    int N_E,
+    int N_u,
+    int N_v)
+{
+    static std::mutex validationMutex;
+    static std::set<std::string> validatedConfigurations;
+
+    // Protect the complete check-validation-register sequence.
+    std::lock_guard<std::mutex> lock(validationMutex);
+
+    // ============================================================
+    // 1. Determine the energy interval
+    // ============================================================
+
+    double Tmin = std::numeric_limits<double>::infinity();
+    double Tmax = -std::numeric_limits<double>::infinity();
+
+    for (const auto& point : spectrum) {
+
+        if (point.empty()) {
+            throw std::runtime_error("GridScan: invalid spectrum entry.");
+        }
+
+        const double T = point[0];
+
+        if (!std::isfinite(T)) {
+            throw std::runtime_error("GridScan: non-finite spectrum energy.");
+        }
+
+        if (T > 0.0) {
+            Tmin = std::min(Tmin, T);
+        }
+
+        Tmax = std::max(Tmax, T);
+    }
+
+    if (!std::isfinite(Tmin) || !std::isfinite(Tmax) || Tmin > Tmax) {
+        throw std::runtime_error("GridScan: invalid energy interval.");
+    }
+
+    const double E_min = Tmin + utilities::EMASSC2;
+    const double E_max = Tmax + utilities::EMASSC2;
+
+    // ============================================================
+    // 2. Construct a configuration key
+    // ============================================================
+
+    std::ostringstream keyStream;
+    keyStream << std::setprecision(17);
+
+    keyStream << transitionKey << "|" << E_min << "|" << E_max << "|" << N_E << "|" << N_u
+              << "|" << N_v << "|" << ctx.rho << "|" << ctx.rM << "|" << ctx.mf << "|" << ctx.mgt
+              << "|" << ctx.ji << "|" << ctx.jf << "|" << ctx.Z << "|" << ctx.betaType << "|" << ctx.CS
+              << "|" << ctx.CSP << "|" << ctx.CV << "|" << ctx.CVP << "|" << ctx.CT<< "|" << ctx.CTP
+              << "|" << ctx.CA << "|" << ctx.CAP << "|" << parameters.a_conf << "|" << parameters.b_conf
+              << "|" << parameters.polMag << "|" << parameters.alignment
+              << "|" << static_cast<int>(parameters.calculationMode) << "|" << expressions.a
+              << "|" << expressions.b << "|" << expressions.c << "|" << expressions.A
+              << "|" << expressions.B << "|" << expressions.D;
+
+    const std::string validationKey = keyStream.str();
+
+    // ============================================================
+    // 3. Skip previously validated configurations
+    // ============================================================
+
+    if (validatedConfigurations.count(validationKey) != 0) {
+        return;
+    }
+
+    // ============================================================
+    // 4. Run the positivity grid scan
+    // ============================================================
+
+    std::ostringstream report;
+
+    report << std::fixed << std::setprecision(10);
+
+    report
+    << "\n========================================================\n"
+    << "          ANGULAR DISTRIBUTION GRID SCAN\n"
+    << "========================================================\n\n"
+
+    << "Transition      : " << transitionKey << "\n\n"
+
+    << "Energy range    : ["
+    << E_min << ", " << E_max << "] keV\n\n"
+
+    << "Grid resolution :\n"
+    << "    Energy (NE) : " << N_E << '\n'
+    << "    u      (NU) : " << N_u << '\n'
+    << "    v      (NV) : " << N_v << "\n\n"
+
+    << "Grid points     : "
+    << static_cast<long long>(N_E) * N_u * N_v
+    << "\n\n";
+
+    // To measure the execution time
+    const auto scanStart = std::chrono::steady_clock::now();
+
+    // Execute the grid scan.
+    const auto result = ValidateCorrelationCoefficients(E_min, E_max, N_E, N_u,N_v, ctx, parameters, expressions);
+
+    const auto scanEnd = std::chrono::steady_clock::now();
+    const double scanTime = std::chrono::duration<double>(scanEnd - scanStart).count();
+
+    // ============================================================
+    // 5. Print validation results
+    // ============================================================
+
+    const bool finiteMinimum = std::isfinite(result.minimumValue);
+    const bool validationPassed =
+    finiteMinimum &&
+    !result.negativeFound &&
+    result.minimumValue >= 0.0;
+
+    report
+    << "--------------------------------------------------------\n"
+    << "MINIMUM ANGULAR DISTRIBUTION\n"
+    << "--------------------------------------------------------\n\n"
+
+    << "W_min           : " << result.minimumValue << '\n'
+    << "Electron energy : " << result.energy << " keV\n"
+    << "u               : " << result.u << '\n'
+    << "v               : " << result.v << "\n\n"
+
+    << "--------------------------------------------------------\n"
+
+    << "Validation      : "
+    << (validationPassed ? "PASS" : "FAIL")
+    << '\n'
+
+    << (validationPassed
+    ? "No negative values found in the scanned grid.\n"
+    : "Negative or non-finite angular distribution detected.\n")
+
+    << "Grid scan time  : "
+    << scanTime << " s\n"
+
+    << "========================================================\n";
+
+    std::cout << report.str();
+
+    // Reject invalid distributions.
+    if (!finiteMinimum) {
+        throw std::runtime_error(
+            "GridScan: non-finite angular distribution."
+        );
+    }
+
+    if (!validationPassed) {
+        throw std::runtime_error(
+            "GridScan failed: negative angular distribution."
+        );
+    }
+
+    // Register only successful validations.
+    validatedConfigurations.insert(validationKey);
+
 }
 
 } // namespace polarisation

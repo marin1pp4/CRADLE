@@ -10,10 +10,14 @@
 #include <sstream>
 #include <complex>
 #include <chrono>
+#include <iomanip>
 
 //develop_3
 #include "exprtk.hpp"
 #include "CRADLE/CustomCoefficients.hh"
+#include "CRADLE/CustomCoefficientValidator.hh"
+#include <algorithm>
+#include <stdexcept>
 
 namespace CRADLE {
 
@@ -174,6 +178,7 @@ std::vector<Particle*> BetaMinus::Decay(Particle* initState, double Q, double da
   //Work in the COM frame
   ublas::vector<double> elFourMomentum (4);
 
+  // Define the general variables
   std::complex<double> CS  = dm.configOptions.couplingConstants.CS;
   std::complex<double> CSP = dm.configOptions.couplingConstants.CSP;
   std::complex<double> CV  = dm.configOptions.couplingConstants.CV;
@@ -187,6 +192,9 @@ std::vector<Particle*> BetaMinus::Decay(Particle* initState, double Q, double da
   double mf = 0.;
   double mgt = 0.;
   double rho = std::nan("");
+  const std::string& customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
+  std::string aCustomExpression = "";
+  std::string bCustomExpression = "";
   
   if (dm.configOptions.betaDecay.Default == "Fermi") {
     mf = 1.;
@@ -211,13 +219,11 @@ std::vector<Particle*> BetaMinus::Decay(Particle* initState, double Q, double da
     } else if (Type == "Gamow-Teller") {
       mgt = 1.;
     } else {
-      double rho = std::stod(Type.substr(5));
+      rho = std::stod(Type.substr(5));
       mgt = utilities::CalculateMatrixElementRatio(rho);
       mf = 1.;
     }
   } 
-
-  double a = utilities::CalculateBetaNeutrinoAsymmetry(CS.real(), CSP.real(), CT.real(), CTP.real(), CV.real(), CVP.real(), CA.real(), CAP.real(), mf, mgt, a_conf, b_conf);
 
   double fierz = utilities::CalculateFierz(CS.real(), CSP.real(), CT.real(), CTP.real(), CV.real(), CVP.real(), CA.real(), CAP.real(), mf, mgt, a_conf, b_conf);
 
@@ -226,6 +232,42 @@ std::vector<Particle*> BetaMinus::Decay(Particle* initState, double Q, double da
   double Jpi_init = utilities::GetJpi(initState->GetNeutrons() + initState->GetCharge(), initState->GetCharge(), initState->GetExcitationEnergy());
   double Jpi_final = utilities::GetJpi(recoil->GetNeutrons() + recoil->GetCharge(), recoil->GetCharge(), recoil->GetExcitationEnergy());
   int Labs = std::abs(std::abs(Jpi_final) - std::abs(Jpi_init));
+
+  // ==========================================
+  // Start: Custom expressions with ExprTk
+  // ==========================================
+  double Z = recoil->GetCharge();
+  double betaType = +1.;
+  double xi = utilities::CalculateXiBetaDecay(CS,CSP,CT,CTP,CV,CVP,CA,CAP,mf, mgt);
+  double gamma = std::sqrt(1. - std::pow(utilities::FINESTRUCTURE * Z, 2.));
+  double j_i = std::abs(Jpi_init);
+  double j_f = std::abs(Jpi_final);
+  double bigLambda = polarisation::BigLambdaJiJfFactor(j_i, j_f);
+  double smallLambda = polarisation::SmallLambdaJiJfFactor(j_i, j_f);
+  double rM = (mf != 0.) ? mgt / mf : std::nan("");
+
+  customcoefficients::CustomCoefficientContext ctx;
+
+  ctx.rho = rho;
+  ctx.rM = rM;
+  ctx.mf = mf;
+  ctx.mgt = mgt;
+  ctx.ji = j_i;
+  ctx.jf = j_f;
+  ctx.Z = Z;
+  ctx.betaType = betaType;
+  ctx.xi = xi;
+  ctx.gamma = gamma;
+  ctx.bigLambda = bigLambda;
+  ctx.smallLambda = smallLambda;
+  ctx.CS = CS;
+  ctx.CSP = CSP;
+  ctx.CV = CV;
+  ctx.CVP = CVP;
+  ctx.CT = CT;
+  ctx.CTP = CTP;
+  ctx.CA = CA;
+  ctx.CAP = CAP;
   
   std::vector<std::vector<double> >* dist;
   try {
@@ -239,8 +281,20 @@ std::vector<Particle*> BetaMinus::Decay(Particle* initState, double Q, double da
     double gamma = std::sqrt(1-std::pow(utilities::FINESTRUCTURE*recoil->GetCharge(), 2.));
     for ( int i = 0; i<dist->size(); i++) {                                  ////// changement de boucle et element par ((*dist)[i]) par SL 10/05/2023
       double E = ((*dist)[i])[0]+utilities::EMASSC2;
+
+      ctx.Ee = E;
+      ctx.gammaRatio = gamma * utilities::EMASSC2 / E;
+      ctx.coulombCorr = utilities::FINESTRUCTURE*Z/std::sqrt(E*E/utilities::EMASSC2/utilities::EMASSC2-1.);
+
+      // Standard Fierz coefficient
+      double b = gamma * fierz;
+
+      if (!bCustomExpression.empty()) {
+        b = customcoefficients::EvaluateCustomCoefficient(bCustomExpression,ctx);
+      }
+
       double SH = ((*dist)[i])[1];
-      ((*dist)[i])[1] = SH*(1+gamma*fierz*utilities::EMASSC2/E);
+      ((*dist)[i])[1] = SH*(1+b*utilities::EMASSC2/E);
     }
     DecayManager::GetInstance().RegisterDistribution(oss.str(), dist);
   }
@@ -252,64 +306,48 @@ std::vector<Particle*> BetaMinus::Decay(Particle* initState, double Q, double da
   double elEnergy = utilities::RandomFromDistribution(*dist)+utilities::EMASSC2;
   double elMomentum = std::sqrt(elEnergy*elEnergy-std::pow(utilities::EMASSC2, 2.));
   ublas::vector<double> enuDir = utilities::RandomDirection();
-  double j_i = std::abs(Jpi_init);
-  double j_f = std::abs(Jpi_final);
-  double Z = recoil->GetCharge();
-  double betaType = +1.;
-  double xi = utilities::CalculateXiBetaDecay(CS,CSP,CT,CTP,CV,CVP,CA,CAP,mf, mgt);
-  double gamma = std::sqrt(1. - std::pow(utilities::FINESTRUCTURE * Z, 2.));
-  double gammaRatio = gamma * utilities::EMASSC2 / elEnergy;
-  double coulombCorr = utilities::FINESTRUCTURE*recoil->GetCharge()/std::sqrt(elEnergy*elEnergy/utilities::EMASSC2/     utilities::EMASSC2-1.);
-  double bigLambda = polarisation::BigLambdaJiJfFactor(j_i, j_f);
-  double smallLambda = polarisation::SmallLambdaJiJfFactor(j_i, j_f);
-  double rM = mgt / mf;
 
-  // ==========================================
-  // Start: Custom expressions with ExprTk
-  // ==========================================
-  std::ostringstream parentName;
-  parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() - 1];
-  std::string customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
-
-  customcoefficients::CustomCoefficientContext ctx;
-
+  // Redefine the context with elEnergy
   ctx.Ee = elEnergy;
-  ctx.rho = rho;
-  ctx.rM = rM;
-  ctx.mf = mf;
-  ctx.mgt = mgt;
-  ctx.ji = j_i;
-  ctx.jf = j_f;
-  ctx.Z = Z;
-  ctx.betaType = betaType;
-  ctx.xi = xi;
-  ctx.gamma = gamma;
-  ctx.gammaRatio = gammaRatio;
-  ctx.coulombCorr = coulombCorr;
-  ctx.bigLambda = bigLambda;
-  ctx.smallLambda = smallLambda;
-  ctx.CS = CS;
-  ctx.CSP = CSP;
-  ctx.CV = CV;
-  ctx.CVP = CVP;
-  ctx.CT = CT;
-  ctx.CTP = CTP;
-  ctx.CA = CA;
-  ctx.CAP = CAP;
+  ctx.gammaRatio = gamma * utilities::EMASSC2 / elEnergy;
+  ctx.coulombCorr = utilities::FINESTRUCTURE*recoil->GetCharge()/std::sqrt(elEnergy*elEnergy/utilities::EMASSC2/     utilities::EMASSC2-1.);
+
+  // Parameters for centralized coefficient evaluation
+  customcoefficients::BetaTransitionParameters parameters;
+  parameters.a_conf = a_conf;
+  parameters.b_conf = b_conf;
+  // Unpolarized decay
+  parameters.polMag = 0.0;
+  parameters.alignment = 0.0;
+
+  // Preserve the original real-valued coefficient formulas
+  // used by the unpolarized beta-minus decay mode.
+  parameters.calculationMode = customcoefficients::CoefficientCalculationMode::LegacyReal;
+
+  // Load custom expressions
+  customcoefficients::CustomCoefficientExpressions expressions;
 
   if (!customFile.empty()) {
-    std::string aCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
-    std::string bCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
-    if (!aCustomExpression.empty()) {
-      a = customcoefficients::EvaluateCustomCoefficient(aCustomExpression,ctx);
-    }
-    if (!bCustomExpression.empty()) {
-      fierz = customcoefficients::EvaluateCustomCoefficient(bCustomExpression,ctx);
-    }
+    std::ostringstream parentName;
+    parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() - 1];
+    expressions.a = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
+    expressions.b = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
   }
-  // ==========================================
-  // End: Custom expressions with ExprTk
-  // ==========================================
+
+  // ============================================================
+  // Grid Scan
+  // ============================================================
+  if (dm.configOptions.betaDecay.GridScan) {
+    const auto& options = dm.configOptions.betaDecay;
+    polarisation::ValidateTransitionOnce(oss.str(), *dist, ctx, parameters, expressions,
+                                         options.GridScanNE, options.GridScanNU, options.GridScanNV);
+  }
+
+  // Evaluate coefficients using the centralized implementation
+  const auto coeff = customcoefficients::EvaluateCorrelationCoefficients(elEnergy, ctx, parameters, expressions);
+
+  double a = coeff.a;
+  fierz = coeff.b;
 
   p.push_back(1.);
   p.push_back(a*elMomentum/elEnergy);
@@ -405,10 +443,6 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
     }
   }
 
-  double a = utilities::CalculateBetaNeutrinoAsymmetry(
-      CS.real(), CSP.real(), CT.real(), CTP.real(), CV.real(), CVP.real(), CA.real(), CAP.real(),
-      mf, mgt, a_conf, b_conf);
-
   double fierz = utilities::CalculateFierz(
       CS.real(), CSP.real(), CT.real(), CTP.real(), CV.real(), CVP.real(), CA.real(), CAP.real(),
       mf, mgt, a_conf, b_conf);
@@ -457,10 +491,20 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   if (!customFile.empty()) {
     std::ostringstream parentName;
     parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() -1];
-
     aCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
     bCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
   }
+
+  customcoefficients::CustomCoefficientExpressions expressions;
+  expressions.a = aCustomExpression;
+  expressions.b = bCustomExpression;
+
+  customcoefficients::BetaTransitionParameters parameters;
+  parameters.a_conf = a_conf;
+  parameters.b_conf = b_conf;
+  parameters.polMag = 0.0;
+  parameters.alignment = 0.0;
+  parameters.calculationMode = customcoefficients::CoefficientCalculationMode::LegacyReal;
 
   std::vector<std::vector<double> >* dist;
   try {
@@ -471,7 +515,6 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
         advancedFermi = true;
       }
       dist = spectrumGen->GenerateSpectrum(initState, recoil, E0, Labs); //// changement de Q en E0 par SL 10/05/2023
-      int i=0;
       for ( int i = 0; i<dist->size(); i++) {////// changement de boucle et element par ((*dist)[i]) par SL 10/05/2023
         double E = ((*dist)[i])[0]+utilities::EMASSC2;
 
@@ -500,12 +543,21 @@ std::vector<Particle*> BetaPlus::Decay(Particle* initState, double Q, double dau
   ctx.gammaRatio = gamma * utilities::EMASSC2/posEnergy;
   ctx.coulombCorr = utilities::FINESTRUCTURE*Z/std::sqrt(posEnergy*posEnergy/(utilities::EMASSC2*utilities::EMASSC2) - 1.);
 
-  if (!aCustomExpression.empty()) {
-    a = customcoefficients::EvaluateCustomCoefficient(aCustomExpression,ctx);
+  // ============================================================
+  // Grid Scan
+  // ============================================================
+  if (dm.configOptions.betaDecay.GridScan) {
+    const auto& options = dm.configOptions.betaDecay;
+    polarisation::ValidateTransitionOnce(oss.str(), *dist, ctx, parameters, expressions,
+                                         options.GridScanNE, options.GridScanNU, options.GridScanNV);
   }
-  // ==========================================
-  // End: Custom expressions with ExprTk
-  // ==========================================
+
+  // Evaluate coefficients
+  const auto coeff =
+  customcoefficients::EvaluateCorrelationCoefficients(posEnergy, ctx, parameters, expressions);
+
+  double a = coeff.a;
+  fierz = coeff.b;
 
   std::vector<double> p;
   p.push_back(1.);
@@ -552,24 +604,28 @@ std::vector<Particle*> BetaMinusRadiative::Decay(Particle* initState, double Q, 
   oss << "BetaMinusRadiative:Z" << recoil->GetCharge() << "A" << recoil->GetCharge() + recoil->GetNeutrons() << "Q" << Q;
   //Work in the COM frame
   ublas::vector<double> elFourMomentum (4);
-
-  double CS = dm.configOptions.couplingConstants.CS.real();
-  double CSP = dm.configOptions.couplingConstants.CSP.real();
-  double CV = dm.configOptions.couplingConstants.CV.real();
-  double CVP = dm.configOptions.couplingConstants.CVP.real();
-  double CA = dm.configOptions.couplingConstants.CA.real();
-  double CAP = dm.configOptions.couplingConstants.CAP.real();
-  double CT = dm.configOptions.couplingConstants.CT.real();
-  double CTP = dm.configOptions.couplingConstants.CTP.real();
-  double a_conf = dm.configOptions.couplingConstants.a;
-  double b_conf = dm.configOptions.couplingConstants.b;
-
   ublas::vector<double> eFourMomentum (4);
   ublas::vector<double> enubarFourMomentum (4);
   ublas::vector<double> gammaFourMomentum (4);
 
+  // Define the general variables
+  std::complex<double> CS  = dm.configOptions.couplingConstants.CS;
+  std::complex<double> CSP = dm.configOptions.couplingConstants.CSP;
+  std::complex<double> CV  = dm.configOptions.couplingConstants.CV;
+  std::complex<double> CVP = dm.configOptions.couplingConstants.CVP;
+  std::complex<double> CA  = dm.configOptions.couplingConstants.CA;
+  std::complex<double> CAP = dm.configOptions.couplingConstants.CAP;
+  std::complex<double> CT  = dm.configOptions.couplingConstants.CT;
+  std::complex<double> CTP = dm.configOptions.couplingConstants.CTP;
+  double a_conf = dm.configOptions.couplingConstants.a;
+  double b_conf = dm.configOptions.couplingConstants.b;
   double mf = 0.;
   double mgt = 0.;
+  double rho = std::nan("");
+  const std::string& customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
+  std::string aCustomExpression = "";
+  std::string bCustomExpression = "";
+
 
   if (dm.configOptions.betaDecay.Default == "Fermi") {
     mf = 1.;
@@ -594,8 +650,9 @@ std::vector<Particle*> BetaMinusRadiative::Decay(Particle* initState, double Q, 
     } else if (Type == "Gamow-Teller") {
       mgt = 1.;
     } else {
-      mgt = 1. ;
-      mf = 1. ;
+      rho = std::stod(Type.substr(5));
+      mgt = utilities::CalculateMatrixElementRatio(rho);
+      mf = 1.;
     }
   } 
   else {
@@ -603,9 +660,8 @@ std::vector<Particle*> BetaMinusRadiative::Decay(Particle* initState, double Q, 
     mf = 1.0;
     } 
 
-  double a = utilities::CalculateBetaNeutrinoAsymmetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf);
-  double fierz = utilities::CalculateFierz(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf);
-  //std::cout << "fierz " << fierz << " a " << a << std::endl;
+  double a = utilities::CalculateBetaNeutrinoAsymmetry(CS.real(), CSP.real(), CT.real(), CTP.real(), CV.real(), CVP.real(), CA.real(), CAP.real(), mf, mgt, a_conf, b_conf);
+  double fierz = utilities::CalculateFierz(CS.real(), CSP.real(), CT.real(), CTP.real(), CV.real(), CVP.real(), CA.real(), CAP.real(), mf, mgt, a_conf, b_conf);
  
   int nH = 0;
   double mass_i = initState->GetMass();
@@ -624,6 +680,62 @@ std::vector<Particle*> BetaMinusRadiative::Decay(Particle* initState, double Q, 
   if (dm.configOptions.betaDecay.FermiFunction == "Advanced") { //// réécriture de la condition par SL 10/05/2023
       advanced = true;
     }
+
+  // ==========================================
+  // Start: Custom expressions with ExprTk
+  // ==========================================
+  double rM = (mf != 0.) ? mgt / mf : std::nan("");
+
+  customcoefficients::CustomCoefficientContext ctx;
+
+  ctx.rho = rho;
+  ctx.rM = rM;
+  ctx.mf = mf;
+  ctx.mgt = mgt;
+  ctx.Z = Z;
+  ctx.betaType = betaType;
+  ctx.CS = CS;
+  ctx.CSP = CSP;
+  ctx.CV = CV;
+  ctx.CVP = CVP;
+  ctx.CT = CT;
+  ctx.CTP = CTP;
+  ctx.CA = CA;
+  ctx.CAP = CAP;
+
+  // Parameters for centralized coefficient evaluation
+  customcoefficients::BetaTransitionParameters parameters;
+
+  parameters.a_conf = a_conf;
+  parameters.b_conf = b_conf;
+
+  // Unpolarized decay
+  parameters.polMag = 0.0;
+  parameters.alignment = 0.0;
+
+  // Preserve the original real-valued coefficient formulas
+  // used by the unpolarized beta-minus decay mode.
+  parameters.calculationMode = customcoefficients::CoefficientCalculationMode::LegacyReal;
+
+  // ============================================================
+  // Load custom expressions
+  // ============================================================
+
+  customcoefficients::CustomCoefficientExpressions expressions;
+
+  if (!customFile.empty()) {
+
+    expressions.a =
+    customcoefficients::GetCustomCoefficientExpression(
+      customFile, parentName, "a"
+    );
+
+    expressions.b =
+    customcoefficients::GetCustomCoefficientExpression(
+      customFile, parentName, "b"
+    );
+  }
+
 
   auto& gen = radiativecorrections::get_thread_local_generator();
   std::vector<double> W;
@@ -924,6 +1036,13 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
   double mf = 0.;
   double mgt = 0.;
   double rho = std::nan("");
+  const std::string& customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
+  std::string aCustomExpression = "";
+  std::string bCustomExpression = "";
+  std::string cCustomExpression = "";
+  std::string ACustomExpression = "";
+  std::string BCustomExpression = "";
+  std::string DCustomExpression = "";
   
   if (dm.configOptions.betaDecay.Default == "Fermi") {
     mf = 1.;
@@ -960,6 +1079,56 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
 
   //std::cout << "fierz " << fierz << " a " << a << std::endl;
   double fierz = utilities::CalculateFierz(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf, recoil->GetCharge(), +1); //beta_minus 
+
+  // ==========================================
+  // Start: Custom expressions with ExprTk
+  // ==========================================
+  double Z = recoil->GetCharge();
+  double betaType = +1.;
+  double xi = utilities::CalculateXiBetaDecay(CS,CSP,CT,CTP,CV,CVP,CA,CAP,mf, mgt);
+  double gamma = std::sqrt(1. - std::pow(utilities::FINESTRUCTURE * Z, 2.));
+  double rM = (mf != 0.) ? mgt / mf : std::nan("");
+
+  customcoefficients::CustomCoefficientContext ctx;
+
+  ctx.rho = rho;
+  ctx.rM = rM;
+  ctx.mf = mf;
+  ctx.mgt = mgt;
+  ctx.Z = Z;
+  ctx.betaType = betaType;
+  ctx.xi = xi;
+  ctx.gamma = gamma;
+  ctx.CS = CS;
+  ctx.CSP = CSP;
+  ctx.CV = CV;
+  ctx.CVP = CVP;
+  ctx.CT = CT;
+  ctx.CTP = CTP;
+  ctx.CA = CA;
+  ctx.CAP = CAP;
+
+
+  if (!customFile.empty()) {
+    std::ostringstream parentName;
+    parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() -1];
+
+    aCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
+    bCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
+    cCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "c");
+    ACustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "A");
+    BCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "B");
+    DCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "D");
+  }
+
+
+  customcoefficients::CustomCoefficientExpressions expressions;
+  expressions.a = aCustomExpression;
+  expressions.b = bCustomExpression;
+  expressions.c = cCustomExpression;
+  expressions.A = ACustomExpression;
+  expressions.B = BCustomExpression;
+  expressions.D = DCustomExpression;
    
   std::vector<std::vector<double> >* dist;
   try {
@@ -972,6 +1141,15 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
     dist = spectrumGen->GenerateSpectrum(initState, recoil, Q, Labs); //// changement de Q en E0 par SL 10/05/2023
     for ( int i = 0; i<dist->size(); i++) {                                  ////// changement de boucle et element par ((*dist)[i]) par SL 10/05/2023
       double E = ((*dist)[i])[0]+utilities::EMASSC2;
+
+      ctx.Ee = E;
+      ctx.gammaRatio = gamma * utilities::EMASSC2 / E;
+      ctx.coulombCorr = utilities::FINESTRUCTURE*Z/std::sqrt(E*E/utilities::EMASSC2/utilities::EMASSC2-1.);
+
+      if (!bCustomExpression.empty()) {
+        fierz = customcoefficients::EvaluateCustomCoefficient(bCustomExpression,ctx);
+      }
+
       double SH = ((*dist)[i])[1];
       ((*dist)[i])[1] = SH*(1+fierz*utilities::EMASSC2/E);
     }
@@ -979,7 +1157,6 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
     }
 
   double elEnergy = utilities::RandomFromDistribution(*dist)+utilities::EMASSC2;
-  
   double elMomentum = std::sqrt(elEnergy*elEnergy-std::pow(utilities::EMASSC2, 2.));
   
   double align = dm.configOptions.betaDecay.Alignment;
@@ -989,6 +1166,13 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
   polDir(2) = dm.configOptions.betaDecay.PolarisationZ;
   polDir = utilities::NormaliseVector(polDir);
   double polMag = dm.configOptions.betaDecay.PolarisationMag;
+
+  // Parameters for centralized coefficient evaluation
+  customcoefficients::BetaTransitionParameters parameters;
+  parameters.a_conf = a_conf;
+  parameters.b_conf = b_conf;
+  parameters.polMag = polMag;
+  parameters.alignment = align;
 
   std::vector<double> angular_mom;
   double j_i, j_f;
@@ -1005,39 +1189,10 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
     j_f = std::abs(j_f);
   }
   
-  double a = utilities::CalculateBetaNeutrinoAsymmetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf, elEnergy, recoil->GetCharge(), +1);  
-  double c = 0;
-  double A = 0;
-  double B = 0;
-  double D = 0;
-
-  if (j_i > 0){
-    A = polarisation::CalculateBetaAssymetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, j_i, j_f, +1, recoil->GetCharge(), elEnergy);
-    B = polarisation::CalculateNeutrinoAssymetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, j_i, j_f, +1, recoil->GetCharge(), elEnergy);
-    D = polarisation::CalculateDTripleCorrelation(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, j_i, j_f, +1, recoil->GetCharge(), elEnergy);
-    if (j_i > 0.5){
-      c = polarisation::CalculateAlignmentCorrelation(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, j_i, j_f, +1, recoil->GetCharge(), elEnergy);
-    }
-  }
-
-  double Z = recoil->GetCharge();
-  double betaType = +1.;
-  double xi = utilities::CalculateXiBetaDecay(CS, CSP, CT, CTP,CV, CVP, CA, CAP, mf, mgt);
-  double gamma = std::sqrt(1. - std::pow(utilities::FINESTRUCTURE * Z, 2.));
   double gammaRatio = gamma * utilities::EMASSC2 / elEnergy;
   double coulombCorr = utilities::FINESTRUCTURE*recoil->GetCharge()/std::sqrt(elEnergy*elEnergy/utilities::EMASSC2/utilities::EMASSC2-1.);
   double bigLambda = polarisation::BigLambdaJiJfFactor(j_i, j_f);
   double smallLambda = polarisation::SmallLambdaJiJfFactor(j_i, j_f);
-  double rM = mgt / mf;
-
-  // ==========================================
-  // Start: Custom expressions with ExprTk
-  // ==========================================
-  std::ostringstream parentName;
-  parentName << initState->GetCharge() + initState->GetNeutrons() << utilities::atoms[initState->GetCharge() - 1];
-  std::string customFile = dm.configOptions.betaDecay.CustomCoefficientsFile;
-
-  customcoefficients::CustomCoefficientContext ctx;
 
   ctx.Ee = elEnergy;
   ctx.rho = rho;
@@ -1063,43 +1218,33 @@ std::vector<Particle*> BetaMinusPolarised::Decay(Particle* initState, double Q, 
   ctx.CA = CA;
   ctx.CAP = CAP;
 
-  if (!customFile.empty()) {
-    std::string aCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "a");
-    std::string bCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "b");
-    std::string cCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "c");
-    std::string ACustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "A");
-    std::string BCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "B");
-    std::string DCustomExpression = customcoefficients::GetCustomCoefficientExpression(customFile, parentName.str(), "D");
-
-    if (!aCustomExpression.empty()) {
-      a = customcoefficients::EvaluateCustomCoefficient(aCustomExpression,ctx);
-    }
-    if (!bCustomExpression.empty()) {
-      fierz = customcoefficients::EvaluateCustomCoefficient(bCustomExpression,ctx);
-    }
-    if (j_i > 0){
-      if (j_i > 0.5 && !cCustomExpression.empty()) {
-        c = customcoefficients::EvaluateCustomCoefficient(cCustomExpression, ctx);
-      }
-      if (!ACustomExpression.empty()) {
-        A = customcoefficients::EvaluateCustomCoefficient(ACustomExpression,ctx);
-      }
-      if (!BCustomExpression.empty()) {
-        B = customcoefficients::EvaluateCustomCoefficient(BCustomExpression,ctx);
-      }
-      if (j_i == j_f && !DCustomExpression.empty()) {
-        D = customcoefficients::EvaluateCustomCoefficient(DCustomExpression,ctx);
-      }
-    }
+  // ============================================================
+  // Grid Scan
+  // ============================================================
+  if (dm.configOptions.betaDecay.GridScan) {
+    const auto& options = dm.configOptions.betaDecay;
+    polarisation::ValidateTransitionOnce(oss.str(), *dist, ctx, parameters, expressions,
+                                         options.GridScanNE, options.GridScanNU, options.GridScanNV);
   }
-  // ==========================================
-  // End: Custom expressions with ExprTk
-  // ==========================================
 
-  c *= align*(-1);
-  A *= polMag;
-  B *= polMag;
-  D *= polMag;
+  // ============================================================
+  // Centralized beta-decay correlation coefficients
+  // ============================================================
+
+  const auto coeff =
+  customcoefficients::EvaluateCorrelationCoefficients(
+    elEnergy,
+    ctx,
+    parameters,
+    expressions
+  );
+
+  double a = coeff.a;
+  fierz = coeff.b;
+  double c = coeff.c;
+  double A = coeff.A;
+  double B = coeff.B;
+  double D = coeff.D;
   
   double F_max = polarisation::AnalyticalMaximumAngCorrFactor(a, fierz, c, A, B, D, elEnergy);
   //std::cout << "a " << a <<  ", c " << c << ", A " << A << ", B " << B << ", D " << D << std::endl;
@@ -1621,6 +1766,16 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
   }
 
 
+  customcoefficients::CustomCoefficientExpressions expressions;
+
+  expressions.a = aCustomExpression;
+  expressions.b = bCustomExpression;
+  expressions.c = cCustomExpression;
+  expressions.A = ACustomExpression;
+  expressions.B = BCustomExpression;
+  expressions.D = DCustomExpression;
+
+
   std::vector<std::vector<double> >* dist;
   try {
     dist = DecayManager::GetInstance().GetDistribution(oss.str());
@@ -1658,6 +1813,12 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
   polDir = utilities::NormaliseVector(polDir);
   double polMag = dm.configOptions.betaDecay.PolarisationMag;
 
+  customcoefficients::BetaTransitionParameters parameters;
+  parameters.a_conf = a_conf;
+  parameters.b_conf = b_conf;
+  parameters.polMag = polMag;
+  parameters.alignment = align;
+
   std::vector<double> angular_mom;
   double j_i, j_f;
   try {
@@ -1673,61 +1834,48 @@ std::vector<Particle*> BetaPlusPolarised::Decay(Particle* initState, double Q, d
     j_f = std::abs(j_f);
   }
 
-  double a = utilities::CalculateBetaNeutrinoAsymmetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, a_conf, b_conf, posEnergy, recoil->GetCharge(), -1);
-  double c = 0;
-  double A = 0;
-  double B = 0;
-  double D = 0;
+  // ============================================================
+  // Evaluate beta-decay correlation coefficients
+  // ============================================================
 
-  if (j_i > 0){
-    A = polarisation::CalculateBetaAssymetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, j_i, j_f, -1, recoil->GetCharge(), posEnergy);
-    B = polarisation::CalculateNeutrinoAssymetry(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, j_i, j_f, -1, recoil->GetCharge(), posEnergy);
-    D = polarisation::CalculateDTripleCorrelation(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, j_i, j_f, -1, recoil->GetCharge(), posEnergy);
-    if (j_i > 0.5){
-      c = polarisation::CalculateAlignmentCorrelation(CS, CSP, CT, CTP, CV, CVP, CA, CAP, mf, mgt, j_i, j_f, -1, recoil->GetCharge(), posEnergy);
-    }
-  }
-
-  // Redefine the context with posEnergy
-  double bigLambda = polarisation::BigLambdaJiJfFactor(j_i, j_f);
-  double smallLambda = polarisation::SmallLambdaJiJfFactor(j_i, j_f);
-
-  ctx.Ee = posEnergy;
-  ctx.gammaRatio = gamma * utilities::EMASSC2/posEnergy;
-  ctx.coulombCorr = utilities::FINESTRUCTURE*Z/std::sqrt(posEnergy*posEnergy/(utilities::EMASSC2*utilities::EMASSC2) - 1.);
+  // Nuclear spin information
   ctx.ji = j_i;
   ctx.jf = j_f;
-  ctx.bigLambda = bigLambda;
-  ctx.smallLambda = smallLambda;
 
-  if (!aCustomExpression.empty()) {
-    a = customcoefficients::EvaluateCustomCoefficient(aCustomExpression,ctx);
-  }
-  if (!bCustomExpression.empty()) {
-    fierz = customcoefficients::EvaluateCustomCoefficient(bCustomExpression, ctx);
-  }
-  if (j_i > 0){
-    if (j_i > 0.5 && !cCustomExpression.empty()) {
-      c = customcoefficients::EvaluateCustomCoefficient(cCustomExpression, ctx);
-    }
-    if (!ACustomExpression.empty()) {
-      A = customcoefficients::EvaluateCustomCoefficient(ACustomExpression,ctx);
-    }
-    if (!BCustomExpression.empty()) {
-      B = customcoefficients::EvaluateCustomCoefficient(BCustomExpression,ctx);
-    }
-    if (j_i == j_f && !DCustomExpression.empty()) {
-      D = customcoefficients::EvaluateCustomCoefficient(DCustomExpression,ctx);
-    }
-  }
-  // ==========================================
-  // End: Custom expressions with ExprTk
-  // ==========================================
+  // Spin-dependent angular factors
+  ctx.bigLambda =
+  polarisation::BigLambdaJiJfFactor(j_i, j_f);
 
-  c *= align*(-1);
-  A *= polMag;
-  B *= polMag;
-  D *= polMag;
+  ctx.smallLambda =
+  polarisation::SmallLambdaJiJfFactor(j_i, j_f);
+
+  // ============================================================
+  // Grid Scan
+  // ============================================================
+  if (dm.configOptions.betaDecay.GridScan) {
+    const auto& options = dm.configOptions.betaDecay;
+    polarisation::ValidateTransitionOnce(oss.str(), *dist, ctx, parameters, expressions,
+                                         options.GridScanNE, options.GridScanNU, options.GridScanNV);
+  }
+
+  // Calculate standard coefficients, apply custom expressions,
+  // and include polarization and alignment factors.
+  const auto coeff =
+  customcoefficients::EvaluateCorrelationCoefficients(
+    posEnergy,
+    ctx,
+    parameters,
+    expressions
+  );
+
+  // Effective coefficients for angular sampling
+  double a = coeff.a;
+  fierz = coeff.b;
+  double c = coeff.c;
+  double A = coeff.A;
+  double B = coeff.B;
+  double D = coeff.D;
+
 
   double F_max = polarisation::AnalyticalMaximumAngCorrFactor(a, fierz, c, A, B, D, posEnergy);
 

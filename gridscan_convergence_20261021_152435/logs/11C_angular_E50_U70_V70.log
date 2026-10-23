@@ -1,0 +1,79 @@
+Parsing initial nucleus 11C
+Registered DecayMode BetaMinus
+Registered DecayMode BetaPlus
+Registered DecayMode Proton
+Registered DecayMode Alpha
+Registered DecayMode Gamma
+Registered DecayMode IT
+Registered DecayMode BetaMinusRadiative
+Registered DecayMode BetaPlusRadiative
+Registered DecayMode BetaMinusVirtualSoft
+Registered DecayMode BetaPlusVirtualSoft
+Registered DecayMode BetaMinusPolarised
+Registered DecayMode BetaPlusPolarised
+Registered DecayMode KshellEC
+Registered DecayMode LshellEC
+Registered DecayMode MshellEC
+Registered Proton Spectrum Generator N6CRADLE22DeltaSpectrumGeneratorE
+Registered Alpha Spectrum Generator N6CRADLE22DeltaSpectrumGeneratorE
+Registered Gamma Spectrum Generator N6CRADLE22DeltaSpectrumGeneratorE
+Registered IT Spectrum Generator N6CRADLE22DeltaSpectrumGeneratorE
+Registered BetaPlus Spectrum Generator N6CRADLE15SimpleBetaDecayE
+Registered BetaMinus Spectrum Generator N6CRADLE15SimpleBetaDecayE
+Registered BetaPlusPolarised Spectrum Generator N6CRADLE15SimpleBetaDecayE
+Registered BetaMinusPolarised Spectrum Generator N6CRADLE15SimpleBetaDecayE
+Cannot registerN6CRADLE22DeltaSpectrumGeneratorEspectrum generator. Decay mode ShellEC not registered.
+RC false
+Intensity : 99.767
+Z : 6 A : 11 J_in : 1.5 Decay Type: -1 Q : 1982.41
+Z : 5 A : 11 J_f : 1.5 Level Energy: 0
+M_GT: -0.591516, M_F: 1
+a: 0.515977, b: -0.0567138, c: 0.287744, A: 0.88704, B: 0.582016, D: 0.00103025
+Mode : KshellEC
+Intensity : 0.22178
+E_exc : 0.288
+
+Mode : LshellEC
+Intensity : 0.011319
+E_exc : 0.01659
+PL1 : 1
+E_exc : 0.01126
+PL2 : 0
+
+Starting Main Loop (10 events)
+
+0%   10   20   30   40   50   60   70   80   90   100%
+|----|----|----|----|----|----|----|----|----|----|
+
+========================================================
+          ANGULAR DISTRIBUTION GRID SCAN
+========================================================
+
+Transition      : BetaPlusPolarised:Z5A11Q1982.41
+
+Energy range    : [511.9989461000, 1470.9989461000] keV
+
+Grid resolution :
+    Energy (NE) : 50
+    u      (NU) : 70
+    v      (NV) : 70
+
+Grid points     : 245000
+
+--------------------------------------------------------
+MINIMUM ANGULAR DISTRIBUTION
+--------------------------------------------------------
+
+W_min           : 0.0586246815
+Electron energy : 1470.9989461000 keV
+u               : -0.9420289855
+v               : 0.3043478261
+
+--------------------------------------------------------
+Validation      : PASS
+No negative values found in the scanned grid.
+Grid scan time  : 0.6359966750 s
+========================================================
+***************************************************
+Done! Time taken: 2.49 s
+

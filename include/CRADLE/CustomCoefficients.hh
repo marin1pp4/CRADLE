@@ -10,11 +10,9 @@ namespace customcoefficients {
 
 // Physical context used to evaluate custom beta-decay coefficients.
 struct CustomCoefficientContext {
-
     double Ee = 0.;
     double rho = std::numeric_limits<double>::quiet_NaN();
     double rM = std::numeric_limits<double>::quiet_NaN();
-
     double mf = 0.;
     double mgt = 0.;
     double ji = 0.;
@@ -27,7 +25,6 @@ struct CustomCoefficientContext {
     double coulombCorr = 0.;
     double bigLambda = 0.;
     double smallLambda = 0.;
-
     std::complex<double> CS{0., 0.};
     std::complex<double> CSP{0., 0.};
     std::complex<double> CV{0., 0.};
@@ -51,27 +48,26 @@ double EvaluateCustomCoefficient(
     const CustomCoefficientContext& ctx
 );
 
-struct BetaTransitionParameters {
+enum class CoefficientCalculationMode {
+    LegacyReal,
+    Complex
+};
 
-    // Bypass coefficient configuration
+struct BetaTransitionParameters {
     double a_conf = std::numeric_limits<double>::quiet_NaN();
     double b_conf = std::numeric_limits<double>::quiet_NaN();
-
-    // Nuclear polarization and alignment
     double polMag = 0.0;
     double alignment = 0.0;
-
+    CoefficientCalculationMode calculationMode = CoefficientCalculationMode::Complex;
 };
 
 struct CustomCoefficientExpressions {
-
     std::string a;
     std::string b;
     std::string c;
     std::string A;
     std::string B;
     std::string D;
-
 };
 
 struct CorrelationCoefficients {

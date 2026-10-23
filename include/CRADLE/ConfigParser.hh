@@ -69,6 +69,10 @@ struct BetaDecay {
   bool RadiativeCorrection = true ;
   double OmegaValue = 0.001 ;
   bool ElectronCapture = true ;
+  bool GridScan = false;
+  int GridScanNE = 50;
+  int GridScanNU = 100;
+  int GridScanNV = 100;
 };
 
 struct EnvOptions {

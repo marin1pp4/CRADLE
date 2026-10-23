@@ -86,10 +86,13 @@ namespace CRADLE {
     comp->add_option("--PolarisationZ", betaDecay.PolarisationZ, "Z component of polarisation direction");
     comp->add_option("--PolarisationMag", betaDecay.PolarisationMag, "Magnitude of polarisation. Previous 3 options provide the direction");
     comp->add_option("--Alignment",betaDecay.Alignment,"Value of the alignment");
-    comp->add_option("-r, --radiativecorrection", betaDecay.RadiativeCorrection, "Radiative Correction");
+    comp->add_option("--r, --radiativecorrection", betaDecay.RadiativeCorrection, "Radiative Correction");
     comp->add_option("--Cs", betaDecay.OmegaValue, "Cs value");
-    comp->add_option("-E, --electroncapture", betaDecay.ElectronCapture, "Electron Capture");
-
+    comp->add_option("--E, --electroncapture", betaDecay.ElectronCapture, "Electron Capture");
+    comp->add_option("--GridScan", betaDecay.GridScan, "Enable angular distribution positivity validation (true/false)");
+    comp->add_option("--GridScanNE", betaDecay.GridScanNE, "Number of grid points in electron energy")->check(CLI::PositiveNumber);
+    comp->add_option("--GridScanNU", betaDecay.GridScanNU, "Number of grid points in u = P_hat dot p_e_hat")->check(CLI::PositiveNumber);
+    comp->add_option("--GridScanNV", betaDecay.GridScanNV, "Number of grid points in v = P_hat dot p_nu_hat")->check(CLI::PositiveNumber);
   }
 
   void SetEnvironmentOptions (CLI::App& app, EnvOptions& envOptions) {
